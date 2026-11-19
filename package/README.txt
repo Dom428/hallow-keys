@@ -9,6 +9,9 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.1
+- Browser autofill for Chrome, Edge and Brave (see the Browser page in Hallow Keys).
+
 WHAT'S NEW IN 1.0
 - First version.
 
@@ -17,6 +20,8 @@ WHAT IT DOES
 - A password generator, Password Health (weak, reused, old) and 2FA codes
 - Import from NordPass (Settings > Export items gives a CSV), other CSV exports and Bitwarden JSON
 - Encrypted backups, a recovery sheet, auto-lock and a clipboard that clears itself
+- Browser autofill for Chrome, Edge and Brave: see the Browser page in Hallow Keys (the extension is in the
+  extension folder next to HallowKeys.exe; you load it with Developer mode > Load unpacked)
 
 YOUR VAULT
 %APPDATA%\HallowKeys\vault.hkvault (the previous save is next to it as .bak). Uninstalling never

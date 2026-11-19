@@ -11,10 +11,12 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 - **Import** from NordPass (CSV export), other CSV exports and Bitwarden (unencrypted JSON); after importing it offers to delete the plain-text file
 - **Encrypted backup** of the whole vault, a printable **recovery sheet**, master password change
 - **Auto-lock** after idle minutes, when Windows locks and when the PC sleeps; copied passwords leave the clipboard after 20 seconds and never go into Windows' clipboard history
+- **Browser autofill** (Chrome, Edge, Brave) - fills only when you click, only on the site a login was saved for, never into hidden boxes; offers to save new logins
 - Optional **Windows Hello** unlock (convenience, not extra security - see below)
 
 ## What's new
 
+- **1.1** - Browser autofill for Chrome, Edge and Brave: an extension (in the `extension` folder) that fills a login when you click it or the key in a password box, and offers to save new logins after you sign in.
 - **1.0** - First version: the vault, generator, Password Health, 2FA codes, import from NordPass / CSV / Bitwarden, encrypted backup and the recovery sheet.
 
 ## How it's built
@@ -27,6 +29,7 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 - **Memory:** key and plaintext byte arrays are wiped after use, and the vault is dropped when it locks. .NET strings (the items while the vault is open, text in the window) can't be wiped - they stay in memory until the garbage collector reuses it.
 - **Nothing secret leaves the vault:** not in logs, crash reports (anything from the open vault is blanked out of them), status files, the family pipe (it answers only ping, status - locked or unlocked and the item count -, open, menu and invoke), window titles or `--snap` pictures (made-up items only).
 - **Generator:** `RNGCryptoServiceProvider` with rejection sampling (no modulo bias).
+- **Browser extension:** a Manifest V3 extension with a fixed ID. The browser starts `HallowKeys.exe` as a native messaging host (registered per user under HKCU when you click Connect browsers); it answers only that extension ID, never reads the vault, and passes requests to the running, unlocked app over a pipe with a per-session secret. Logins are offered only on the exact host or the same registrable domain (look-alike Unicode names don't match, and https logins are never offered on http pages), filled only after a click, only into visible boxes in the top page or same-origin frames.
 
 Built with the C# compiler that ships with Windows (.NET Framework 4.8): run `build.ps1`. No admin needed.
 

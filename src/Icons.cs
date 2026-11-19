@@ -21,7 +21,7 @@ namespace HallowKeys
             { "Unlock", "lock-open" }, { "Lock", "lock" }, { "Lock now", "lock" }, { "Windows Hello", "fingerprint" }, { "Create vault", "key" }, { "New item", "plus" }, { "Save", "floppy-disk" }, { "Delete", "trash-can" },
             { "Edit", "pen" }, { "Copy", "copy" }, { "Show", "eye" }, { "Hide", "eye-slash" }, { "Generate", "dice" }, { "Use this", "check" }, { "Import", "file-import" }, { "Export backup", "file-export" },
             { "Restore backup", "file-import" }, { "Print", "print" }, { "Add file", "paperclip" }, { "Cancel", "xmark" }, { "OK", "check" }, { "x", "xmark" }, { "Check for updates", "arrows-rotate" },
-            { "Change master password", "key" }, { "Recovery sheet", "print" }, { "Open", "globe" }, { "Check for leaked passwords", "shield-halved" }, { "Connect browsers", "puzzle-piece" }, { "Copy folder path", "copy" },
+            { "Change master password", "key" }, { "Recovery sheet", "print" }, { "Open", "globe" }, { "Check for leaked passwords", "shield-halved" }, { "Connect browsers", "puzzle-piece" }, { "Disconnect browsers", "xmark" }, { "Copy folder path", "copy" },
             { "Use recovery code", "key" }, { "Save file", "download" }, { "Remove", "trash-can" }, { "Copy code", "copy" },
         };
         static readonly string[][] Prefixes = { new[] { "Update to", "download" } };

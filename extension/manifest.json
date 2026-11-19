@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "Hallow Keys",
+  "version": "1.1.0",
+  "description": "Fill and save logins from Hallow Keys, the password manager on your PC. Fills only when you click.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAjm5RBsxefRWvXJ7KOgdjKmceur5VEypy6gAvc2dTMF/9Ci62nKmtf48EG+5gi/td1oJApsu9wDai6sooEwH3pF+CEuHp+XKvO/2yfYp6sRPqQEoG8WSUoOdj5cpIZMXTM3rMC6x3xqJ9k9tI1llM8dx5aW0g+xkRf6sU6Lh6TzCBix3iATGUO0S/ebpMWyyDgnMZyZrjcL/DJ+xrcipJZwyjd+3554TjoO6mg0qk+3sp9yH4fyhNBdAOcp8w5yGh7LAUAiuLJmvqKYgE2nVl5wV6rjOn82OZ4Sws6p2mmIbhY6eETNePSlUfogTCDUZuF8NG6KDY9mNGbl+d3ts3aQIDAQAB",
+  "icons": { "16": "icons/16.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "action": { "default_popup": "popup.html", "default_title": "Hallow Keys", "default_icon": { "16": "icons/16.png", "48": "icons/48.png" } },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["nativeMessaging", "storage", "activeTab"],
+  "content_scripts": [{ "matches": ["http://*/*", "https://*/*"], "js": ["content.js"], "all_frames": true, "run_at": "document_idle" }]
+}

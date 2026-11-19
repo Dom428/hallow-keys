@@ -20,18 +20,20 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("1.0.0.0")]
-[assembly: AssemblyFileVersion("1.0.0.0")]
+[assembly: AssemblyVersion("1.1.0.0")]
+[assembly: AssemblyFileVersion("1.1.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "1.0";
+        public const string Version = "1.1";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
         {
+            // v1.1: started by a browser as the native messaging host (no window, nothing else)
+            if (args.Contains("--native-host") || args.Any(a => a.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase))) return NativeHost.Run(args);
             int ci = Array.IndexOf(args, "--cmd");
             if (ci >= 0) return Family.RunCmd(ci + 1 < args.Length ? args[ci + 1] : "");
             int si = Array.IndexOf(args, "--snap");
@@ -111,6 +113,7 @@ namespace HallowKeys
                 upd.Tick += (s, e) => { upd.Interval = TimeSpan.FromHours(6); DateTime last; if (!DateTime.TryParse(S.LastUpdateCheck, out last) || (DateTime.Now - last).TotalHours >= 24 || KeysSettings.TestDir != null) CheckForUpdate(false); };
                 upd.Start();
             }
+            StartNative();
             ExtraInit();
             if (!startHidden) Show();
         }

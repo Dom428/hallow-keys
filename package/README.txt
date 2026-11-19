@@ -9,6 +9,10 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.2
+- Check for leaked passwords (Password Health).
+- A read-only copy on your phone through Hallow Remote (Settings > Phone copy).
+
 WHAT'S NEW IN 1.1
 - Browser autofill for Chrome, Edge and Brave (see the Browser page in Hallow Keys).
 
@@ -17,7 +21,9 @@ WHAT'S NEW IN 1.0
 
 WHAT IT DOES
 - Logins, secure notes, cards and identities, with folders, favourites, search and small files
-- A password generator, Password Health (weak, reused, old) and 2FA codes
+- A password generator, Password Health (weak, reused, old, leaked) and 2FA codes
+- Check for leaked passwords (Password Health) - only a short hash prefix leaves your PC
+- A read-only copy on your phone through Hallow Remote (Settings > Phone copy; needs Remote's HTTPS)
 - Import from NordPass (Settings > Export items gives a CSV), other CSV exports and Bitwarden JSON
 - Encrypted backups, a recovery sheet, auto-lock and a clipboard that clears itself
 - Browser autofill for Chrome, Edge and Brave: see the Browser page in Hallow Keys (the extension is in the

@@ -51,7 +51,9 @@ namespace HallowKeys
     {
         [DataMember] public List<Item> Items = new List<Item>();
         [DataMember] public List<string> Folders = new List<string>();
-        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); }
+        [DataMember] public List<string> LeakedIds = new List<string>();   // v1.2: logins whose password was found in a breach
+        [DataMember] public byte[] PhoneSalt, PhoneKey; [DataMember] public int PhoneIterations;   // v1.2: the phone copy's key (only inside the encrypted vault)
+        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); }
     }
 
     public class VaultException : Exception { public VaultException(string m) : base(m) { } }
@@ -199,6 +201,6 @@ namespace HallowKeys
         // the data key, for Windows Hello (DPAPI) - the caller wipes it
         public byte[] DataKeyCopy() { return dataKey == null ? null : (byte[])dataKey.Clone(); }
         public bool Unlocked { get { return dataKey != null; } }
-        public void Dispose() { Gcm.Wipe(dataKey); dataKey = null; Data = new VaultData(); }
+        public void Dispose() { Gcm.Wipe(dataKey); dataKey = null; if (Data != null) Gcm.Wipe(Data.PhoneKey); Data = new VaultData(); }
     }
 }

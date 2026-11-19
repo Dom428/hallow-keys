@@ -237,6 +237,7 @@ namespace HallowKeys
                 {
                     if (current != null) using (Vault.Open(KeysSettings.VaultPath, current)) { }   // checks the current password
                     vault.ChangePassword(np);
+                    PhoneAfterPasswordChange(np);
                 }
                 catch (Exception e) { err = e.Message; }
                 finally { Gcm.Wipe(current); Gcm.Wipe(np); }

@@ -5,6 +5,7 @@
 //   | u8 hasRecovery | [u32 iterations | u8 saltLen | salt | nonce(12) ct(32) tag(16)]   - the data key under the recovery code
 //   | data nonce(12) | u32 cipherLength                         = header (all of it is the AAD of the data)
 //   | ciphertext | tag(16)                                     - the items (JSON), AES-256-GCM under the data key
+// v1.3 adds password history dates, tags and a trash to the items JSON - all inside the encrypted part; the file format is unchanged.
 // A new random nonce for every save. Saves are atomic (temp file, then replace) and keep the previous good file as .bak.
 using System;
 using System.Collections.Generic;
@@ -39,9 +40,13 @@ namespace HallowKeys
         [DataMember] public string Notes = "";
         [DataMember] public List<Attachment> Files = new List<Attachment>();
         [DataMember] public List<string> OldPasswords = new List<string>();   // previous passwords (for "reused" and history)
+        [DataMember] public List<string> OldPasswordDates = new List<string>();   // v1.3: when each old password was replaced (ISO time, same order; "" = not known)
+        [DataMember] public List<string> Tags = new List<string>();               // v1.3
+        [DataMember] public DateTime? Deleted;                                   // v1.3: when it went to the trash (null = not in the trash)
         [OnDeserialized] void Fix(StreamingContext c)
         {
             if (Urls == null) Urls = new List<string>(); if (Files == null) Files = new List<Attachment>(); if (OldPasswords == null) OldPasswords = new List<string>();
+            if (OldPasswordDates == null) OldPasswordDates = new List<string>(); if (Tags == null) Tags = new List<string>();
             foreach (var f in new[] { "Username", "Password", "Totp", "CardHolder", "CardNumber", "Expiry", "Cvc", "Pin", "FullName", "Email", "Phone", "Address", "City", "PostCode", "Country", "Notes", "Title", "Folder", "Type" })
             { var p = GetType().GetField(f); if (p.GetValue(this) == null) p.SetValue(this, f == "Type" ? "login" : ""); }
         }
@@ -53,7 +58,8 @@ namespace HallowKeys
         [DataMember] public List<string> Folders = new List<string>();
         [DataMember] public List<string> LeakedIds = new List<string>();   // v1.2: logins whose password was found in a breach
         [DataMember] public byte[] PhoneSalt, PhoneKey; [DataMember] public int PhoneIterations;   // v1.2: the phone copy's key (only inside the encrypted vault)
-        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); }
+        [DataMember] public List<Item> Trash = new List<Item>();           // v1.3: deleted items, kept (encrypted, in here) for 30 days
+        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); }
     }
 
     public class VaultException : Exception { public VaultException(string m) : base(m) { } }
@@ -109,6 +115,16 @@ namespace HallowKeys
         }
 
         public void ChangePassword(byte[] newPassword) { SetMaster(newPassword); Save(); }   // re-wraps the same data key
+
+        // v1.3: an encrypted export with its own password - the same file format (its own random data key and salt, no recovery code),
+        // so Restore backup opens it. Only items and folders go in (no trash, no phone key, no leak results).
+        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders)
+        {
+            var v = new Vault { Path = path, dataKey = Rng.Bytes(32) };
+            v.Data = new VaultData { Items = items.ToList(), Folders = folders.ToList() };
+            try { v.SetMaster(password); WriteAtomic(path, v.Serialize(), false); }
+            finally { Gcm.Wipe(v.dataKey); v.dataKey = null; v.Data = new VaultData(); }
+        }
 
         // ---- open
         public static Vault Open(string path, byte[] password) { return OpenBytes(path, ReadFile(path), password, false, null); }

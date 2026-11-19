@@ -103,7 +103,7 @@ namespace HallowKeys
         // ---- import and backup
         UIElement TransferPage()
         {
-            ScrollViewer sv; var sp = Page("Import and backup", null, out sv);
+            ScrollViewer sv; var sp = Page("Import, backup and export", null, out sv);
             var imp = new StackPanel();
             imp.Children.Add(new TextBlock { Text = "Import", FontWeight = FontWeights.SemiBold, FontSize = 14 });
             imp.Children.Add(new TextBlock { Text = "From NordPass: Settings > Export items in NordPass gives a CSV file - pick it here. Also works with other CSV exports (browsers, 1Password, LastPass...) and Bitwarden's unencrypted JSON export. Items you already have aren't added twice.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 8) });
@@ -116,6 +116,14 @@ namespace HallowKeys
             var eb = new Button { Content = "Export backup", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; eb.Click += (s, e) => ExportBackup();
             var rb = new Button { Content = "Restore backup", Style = St("Btn") }; rb.Click += (s, e) => RestoreBackup();
             row.Children.Add(eb); row.Children.Add(rb); bk.Children.Add(row); sp.Children.Add(Card(bk));
+            var ex = new StackPanel();
+            ex.Children.Add(new TextBlock { Text = "Export", FontWeight = FontWeights.SemiBold, FontSize = 14 });
+            ex.Children.Add(new TextBlock { Text = "Encrypted export: your items in the same encrypted format, locked with a separate password you pick now - handy for moving to another PC without sharing your master password. Restore backup opens it.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
+            ex.Children.Add(new TextBlock { Text = "Plain CSV: everything as readable text (NordPass's column layout) for moving to another password manager. It isn't encrypted - anyone who gets the file can read every password - so delete it straight after.", Foreground = B("#F0BE5A"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8) });
+            var exRow = new StackPanel { Orientation = Orientation.Horizontal };
+            var ee = new Button { Content = "Encrypted export", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; ee.Click += (s, e) => ExportEncrypted();
+            var ec = new Button { Content = "Plain CSV export", Style = St("Btn") }; ec.Click += (s, e) => ExportCsv();
+            exRow.Children.Add(ee); exRow.Children.Add(ec); ex.Children.Add(exRow); sp.Children.Add(Card(ex));
             return sv;
         }
         void DoImport()
@@ -142,7 +150,7 @@ namespace HallowKeys
         {
             var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Pick a Hallow Keys backup", Filter = "Hallow Keys backup (*.hkbackup;*.hkvault;*.bak)|*.hkbackup;*.hkvault;*.bak|All files|*.*" };
             if (dlg.ShowDialog(this) != true) return;
-            var pw = Ask.Password(this, "Restore backup", "The master password the backup was made with:");
+            var pw = Ask.Password(this, "Restore backup", "The master password the backup was made with (or the password you picked for an encrypted export):");
             if (pw == null) return;
             Vault b = null;
             try { b = Vault.Open(dlg.FileName, pw); } catch (Exception e) { Toast(e.Message, true); return; } finally { Gcm.Wipe(pw); }
@@ -166,6 +174,7 @@ namespace HallowKeys
             lk.Children.Add(row);
             lk.Children.Add(new TextBlock { Text = "It also locks when Windows locks or the PC sleeps, and copied passwords leave the clipboard after " + SafeClip.ClearSeconds + " seconds (they never go into Windows' clipboard history).", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
             sp.Children.Add(Card(lk));
+            HotkeyCard(sp);
             // Windows Hello
             var wh = new StackPanel();
             wh.Children.Add(new TextBlock { Text = "Windows Hello", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 4) });

@@ -23,8 +23,10 @@ namespace HallowKeys
             { "Restore backup", "file-import" }, { "Print", "print" }, { "Add file", "paperclip" }, { "Cancel", "xmark" }, { "OK", "check" }, { "x", "xmark" }, { "Check for updates", "arrows-rotate" },
             { "Change master password", "key" }, { "Recovery sheet", "print" }, { "Open", "globe" }, { "Check for leaked passwords", "shield-halved" }, { "Connect browsers", "puzzle-piece" }, { "Disconnect browsers", "xmark" }, { "Copy folder path", "copy" },
             { "Use recovery code", "key" }, { "Save file", "download" }, { "Remove", "trash-can" }, { "Copy code", "copy" },
+            { "Encrypted export", "file-export" }, { "Plain CSV export", "file-csv" }, { "Restore", "trash-can-arrow-up" }, { "Delete forever", "trash-can" }, { "Empty trash", "trash-can" }, { "Move to trash", "trash-can" },
+            { "Show item", "eye" }, { "Keep newest, trash the rest", "clone" }, { "Clear history", "xmark" },
         };
-        static readonly string[][] Prefixes = { new[] { "Update to", "download" } };
+        static readonly string[][] Prefixes = { new[] { "Update to", "download" }, new[] { "Show password history", "clock-rotate-left" }, new[] { "Hide password history", "clock-rotate-left" } };
         public static string ForLabel(string label)
         {
             if (string.IsNullOrEmpty(label)) return null;

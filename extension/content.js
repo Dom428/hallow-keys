@@ -36,6 +36,28 @@
     return pairs;
   }
   HK.fields = fields;
+  // v1.3: the box for a 2FA code - one box (autocomplete=one-time-code, or named like otp / 2fa / verification code), or 4-8 one-character boxes in a row
+  const otpRe = /one.?time|\botp|totp|2fa|mfa|two.?factor|verification.?code|verify.?code|auth\w*.?code|passcode|sms.?code|login.?code/i;
+  function otpFields() {
+    const login = new Set(); for (const f of fields()) { if (f.user) login.add(f.user); }
+    const vis = [...document.querySelectorAll('input')].filter(i => ['text', 'tel', 'number', ''].includes((i.getAttribute('type') || '').toLowerCase()) && !login.has(i) && visible(i));
+    const one = vis.find(i => (i.getAttribute('autocomplete') || '').toLowerCase().split(/\s+/).includes('one-time-code') && i.maxLength !== 1);
+    if (one) return [one];
+    const groups = new Map();
+    for (const i of vis.filter(x => x.maxLength === 1)) { const k = i.form || (i.parentElement && i.parentElement.parentElement) || document.body; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(i); }
+    for (const g of groups.values()) if (g.length >= 4 && g.length <= 8) return g;
+    const named = vis.find(i => i.maxLength !== 1 && otpRe.test([i.name, i.id, i.placeholder, i.getAttribute('aria-label') || '', i.getAttribute('autocomplete') || ''].join(' ')));
+    return named ? [named] : [];
+  }
+  HK.otpFields = otpFields;
+  function fillTotp(code) {
+    if (!sameOriginAsTop() || !code) return 0;
+    const boxes = otpFields(); if (!boxes.length) return 0;
+    if (boxes.length === 1) { setValue(boxes[0], code); return 1; }
+    for (let i = 0; i < boxes.length && i < code.length; i++) setValue(boxes[i], code[i]);
+    return boxes.length;
+  }
+  HK.fillTotp = fillTotp;
   function setValue(el, v) {
     const proto = Object.getPrototypeOf(el); const d = Object.getOwnPropertyDescriptor(proto, 'value') || Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
     d.set.call(el, v); el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true }));
@@ -47,7 +69,7 @@
       if (f.user && username) { setValue(f.user, username); n++; }
       if (f.pass && password) { setValue(f.pass, password); n++; break; }   // the first visible password box only
     }
-    if (totp) { const o = [...document.querySelectorAll('input[autocomplete=one-time-code]')].find(visible); if (o) { setValue(o, totp); n++; } }
+    if (totp && otpFields().length) n += fillTotp(totp) > 0 ? 1 : 0;
     return n;
   }
   HK.fill = fill;
@@ -55,8 +77,9 @@
   // filling: the request comes from the extension itself, with the origin it was matched for
   if (typeof chrome !== 'undefined' && chrome.runtime && chrome.runtime.onMessage) {
     chrome.runtime.onMessage.addListener((m, sender, send) => {
-      if (m.type !== 'hk-fill' || sender.id !== chrome.runtime.id) return false;
+      if ((m.type !== 'hk-fill' && m.type !== 'hk-fill-totp') || sender.id !== chrome.runtime.id) return false;
       if (m.origin !== location.origin || !sameOriginAsTop()) return false;
+      if (m.type === 'hk-fill-totp') { const k = fillTotp(m.totp); m.totp = null; if (k > 0) send({ filled: k }); return false; }
       const n = fill(m.username, m.password, m.totp); m.password = null;
       if (n > 0) { send({ filled: n }); return false; }
       return false;
@@ -64,13 +87,13 @@
   }
 
   // the key icon in password boxes: a click (a real one, not a script's) shows the logins for this site
-  function addIcon(p) {
+  function addIcon(p, otp) {
     if (p.dataset.hkIcon) return; p.dataset.hkIcon = '1';
     const host = document.createElement('span'); const root = host.attachShadow({ mode: 'closed' });
     root.innerHTML = '<style>button{all:unset;cursor:pointer;width:18px;height:18px;display:flex;align-items:center;justify-content:center;border-radius:4px;background:#2a2333;color:#f07820;font:12px sans-serif}' +
       'ul{all:unset;position:absolute;top:22px;right:0;min-width:220px;background:#211b2a;border:1px solid #3a3248;border-radius:8px;padding:4px;z-index:2147483647;display:block;list-style:none}' +
       'li{all:unset;display:block;padding:6px 8px;border-radius:6px;color:#ece8f4;font:13px Segoe UI,sans-serif;cursor:pointer}li:hover{background:#3a2f4a}li small{display:block;color:#8f88a0;font-size:11px}</style>' +
-      '<button title="Fill from Hallow Keys">&#128273;</button>';
+      '<button title="' + (otp ? 'Fill the 2FA code from Hallow Keys' : 'Fill from Hallow Keys') + '">&#128273;</button>';
     host.style.cssText = 'position:absolute;z-index:2147483646;';
     const place = () => { const r = p.getBoundingClientRect(); host.style.top = (window.scrollY + r.top + (r.height - 18) / 2) + 'px'; host.style.left = (window.scrollX + r.right - 24) + 'px'; host.style.display = visible(p) ? 'block' : 'none'; };
     document.body.appendChild(host); place();
@@ -85,13 +108,22 @@
         const add = (text, sub, fn) => { const li = document.createElement('li'); li.textContent = text; if (sub) { const s = document.createElement('small'); s.textContent = sub; li.appendChild(s); } li.addEventListener('click', e => { if (!e.isTrusted) return; ul.remove(); fn(); }); ul.appendChild(li); };
         if (r && r.locked) add('Hallow Keys is locked', 'Click to open it', () => chrome.runtime.sendMessage({ type: 'popup-open' }));
         else if (!r || !r.ok) add((r && r.msg) || 'Hallow Keys isn\'t running', null, () => { });
+        else if (otp) {
+          const withCode = items.filter(it => it.totp);
+          if (withCode.length === 0) add('No 2FA codes for this site', 'Add the 2FA key to the login in Hallow Keys', () => { });
+          else withCode.forEach(it => add(it.title, (it.username ? it.username + ' - ' : '') + '2FA code', () => chrome.runtime.sendMessage({ type: 'inline-totp', id: it.id })));
+        }
         else if (items.length === 0) add('No logins for this site', null, () => { });
         else items.forEach(it => add(it.title, it.username, () => chrome.runtime.sendMessage({ type: 'inline-fill', id: it.id })));
         root.appendChild(ul);
       });
     });
   }
-  function scan() { if (!sameOriginAsTop()) return; document.querySelectorAll('input[type=password]').forEach(p => { if (visible(p)) addIcon(p); }); }
+  function scan() {
+    if (!sameOriginAsTop()) return;
+    document.querySelectorAll('input[type=password]').forEach(p => { if (visible(p)) addIcon(p); });
+    const o = otpFields(); if (o.length) addIcon(o[o.length - 1], true);
+  }
   HK.scan = scan;
 
   // saving: when a form with a password is sent, offer to save it (the popup asks - nothing is saved without your OK)
@@ -109,7 +141,7 @@
       if (!e.isTrusted) return; const b = e.target.closest && e.target.closest('button,input[type=submit]'); if (!b) return;
       const form = b.form || b.closest('form'); const c = captured(form); if (c && (!form || b.type === 'submit' || b.type === '')) chrome.runtime.sendMessage({ type: 'submitted', username: c.username, password: c.password });
     }, true);
-    scan(); new MutationObserver(() => scan()).observe(document.documentElement, { childList: true, subtree: true });
+    scan(); let pend = 0; new MutationObserver(() => { if (!pend) pend = setTimeout(() => { pend = 0; scan(); }, 250); }).observe(document.documentElement, { childList: true, subtree: true });
   }
   if (window.__hallowKeysTest) window.__hallowKeysTest(HK);
 })();

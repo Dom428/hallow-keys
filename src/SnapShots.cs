@@ -19,6 +19,13 @@ namespace HallowKeys
             d.Items.Add(new Item { Title = "Wi-Fi at home", Type = "note", Notes = "Network: Example-5G\nPassword: (made up for the picture)" });
             d.Items.Add(new Item { Title = "Everyday card", Type = "card", CardHolder = "A N OTHER", CardNumber = "4111 1111 1111 1111", Expiry = "08/29", Cvc = "123" });
             d.Items.Add(new Item { Title = "Me", Type = "identity", FullName = "Alex Example", Email = "alex@example.com", Phone = "+1 555 0100", City = "Springfield", Country = "Example" });
+            // v1.3: tags, password history, a duplicate and something in the trash (all made up)
+            d.Items[0].Tags.AddRange(new[] { "games", "2fa" }); d.Items[3].Tags.Add("games"); d.Items[1].Tags.Add("email");
+            Organize.RecordOldPassword(d.Items[0], "old-Steam-pass-2", DateTime.Now.AddDays(-40)); Organize.RecordOldPassword(d.Items[0], "old-Steam-pass-1", DateTime.Now.AddDays(-400));
+            d.Items[0].OldPasswords.Reverse(); d.Items[0].OldPasswordDates.Reverse();
+            d.Items.Add(new Item { Title = "Example Mail (old)", Type = "login", Username = "me@example.com", Password = "hunter3", Urls = { "https://www.mail.example.com" }, Updated = DateTime.Now.AddDays(-90) });
+            var gone = new Item { Title = "Old forum", Type = "login", Username = "player1", Password = "made-up", Urls = { "https://forum.example.org" } };
+            d.Items.Add(gone); Organize.MoveToTrash(d, gone, DateTime.Now.AddDays(-12));
             return d;
         }
         public static void SnapAll(string dir)

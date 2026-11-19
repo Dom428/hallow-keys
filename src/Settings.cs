@@ -28,7 +28,9 @@ namespace HallowKeys
         [DataMember] public bool PhoneCopy;            // v1.2: an encrypted copy for Hallow Remote's phone page
         [DataMember] public bool WeeklyLeakCheck;      // v1.2
         [DataMember] public string LastLeakCheck = "";
-        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; }
+        [DataMember] public bool QuickSearchKey = true;             // v1.3: a global shortcut that opens quick search (left off if another app has it)
+        [DataMember] public string QuickSearchCombo = "Ctrl+Shift+Space";
+        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = true; QuickSearchCombo = "Ctrl+Shift+Space"; }
 
         // HALLOW_KEYS_TESTDIR (developer tests only): everything lives in that folder instead, so tests never touch the real vault
         public static string TestDir { get { var t = Environment.GetEnvironmentVariable("HALLOW_KEYS_TESTDIR"); return string.IsNullOrEmpty(t) ? null : t; } }

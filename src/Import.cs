@@ -74,6 +74,8 @@ namespace HallowKeys
                 it.FullName = Col(h, r, "full_name", "fullname"); it.Email = Col(h, r, "email"); it.Phone = Col(h, r, "phone_number", "phone");
                 it.Address = string.Join(", ", new[] { Col(h, r, "address1", "address"), Col(h, r, "address2") }.Where(x => x.Length > 0));
                 it.City = Col(h, r, "city"); it.PostCode = Col(h, r, "zipcode", "zip", "postcode", "postal_code"); it.Country = Col(h, r, "country");
+                it.Tags = Organize.ParseTags(Col(h, r, "tags", "tag", "labels"));
+                Unguard(it);
                 if (type == "credit_card" || type == "card" || (type.Length == 0 && it.CardNumber.Length > 0)) it.Type = "card";
                 else if (type == "identity" || (type.Length == 0 && it.FullName.Length > 0 && it.Password.Length == 0)) it.Type = "identity";
                 else if (type == "note" || type == "secure_note" || (type.Length == 0 && it.Password.Length == 0 && it.Username.Length == 0 && it.Urls.Count == 0)) it.Type = "note";
@@ -84,6 +86,15 @@ namespace HallowKeys
                 res.Items.Add(it);
             }
             return res;
+        }
+
+        // v1.3: Hallow Keys' own CSV export puts a ' in front of text that a spreadsheet would run as a formula - take it off again
+        static string Ug(string s) { return s != null && s.Length > 1 && s[0] == (char)39 && "=+-@\t\r".IndexOf(s[1]) >= 0 ? s.Substring(1) : s; }
+        static void Unguard(Item it)
+        {
+            it.Title = Ug(it.Title); it.Folder = Ug(it.Folder); it.Username = Ug(it.Username); it.Notes = Ug(it.Notes); it.CardHolder = Ug(it.CardHolder); it.FullName = Ug(it.FullName);
+            it.Email = Ug(it.Email); it.Phone = Ug(it.Phone); it.Address = Ug(it.Address); it.City = Ug(it.City); it.PostCode = Ug(it.PostCode); it.Country = Ug(it.Country);
+            it.Urls = it.Urls.Select(Ug).ToList(); it.Tags = it.Tags.Select(Ug).ToList();
         }
 
         // Bitwarden "JSON" export (not the encrypted one)

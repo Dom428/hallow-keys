@@ -27,10 +27,18 @@ function send(m) { return new Promise(r => chrome.runtime.sendMessage(m, r)); }
   if (r.locked) { list.appendChild(text(document.createElement('div'), 'Hallow Keys is locked.')).className = 'msg'; const b = text(document.createElement('button'), 'Unlock it'); b.className = 'btn go'; b.style.margin = '0 14px 12px'; b.onclick = () => { send({ type: 'popup-open' }); window.close(); }; list.appendChild(b); return; }
   if (!r.ok) { list.appendChild(text(document.createElement('div'), r.msg || 'Something went wrong.')).className = 'msg'; return; }
   if (!r.items.length) { list.appendChild(text(document.createElement('div'), 'No logins for this site.')).className = 'msg'; return; }
+  const say = t => { const m = document.createElement('div'); m.className = 'msg'; m.textContent = t; list.prepend(m); };
   for (const it of r.items) {
+    const row = document.createElement('div'); row.className = 'row';
     const b = document.createElement('button'); b.className = 'item';
     b.appendChild(text(document.createElement('b'), it.title)); b.appendChild(text(document.createElement('small'), it.username || ''));
-    b.onclick = async () => { const f = await send({ type: 'popup-fill', tabId: tab.id, id: it.id }); if (f && f.ok) window.close(); else { const m = document.createElement('div'); m.className = 'msg'; m.textContent = (f && f.msg) || 'Couldn\'t fill'; list.prepend(m); } };
-    list.appendChild(b);
+    b.onclick = async () => { const f = await send({ type: 'popup-fill', tabId: tab.id, id: it.id }); if (f && f.ok) window.close(); else say((f && f.msg) || 'Couldn\'t fill'); };
+    row.appendChild(b);
+    if (it.totp) {   // v1.3: fill only the 2FA code (for the page that asks for it after you sign in)
+      const c = text(document.createElement('button'), '2FA'); c.className = 'btn code'; c.title = 'Fill the 2FA code';
+      c.onclick = async () => { const f = await send({ type: 'popup-totp', tabId: tab.id, id: it.id }); if (f && f.ok) window.close(); else say((f && f.msg) || 'Couldn\'t fill the code'); };
+      row.appendChild(c);
+    }
+    list.appendChild(row);
   }
 })();

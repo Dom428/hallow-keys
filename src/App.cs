@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("1.2.0.0")]
-[assembly: AssemblyFileVersion("1.2.0.0")]
+[assembly: AssemblyVersion("1.3.0.0")]
+[assembly: AssemblyFileVersion("1.3.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "1.2";
+        public const string Version = "1.3";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -114,6 +114,7 @@ namespace HallowKeys
                 upd.Start();
             }
             StartNative();
+            StartHotkey();
             ExtraInit();
             if (!startHidden) Show();
         }
@@ -250,7 +251,7 @@ namespace HallowKeys
         }
         void Unlocked(Vault v)
         {
-            vault = v; WriteStatus(); ShowMain(); OnUnlocked();
+            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13();
         }
         partial void OnUnlocked();
         partial void OnLocking();
@@ -259,7 +260,7 @@ namespace HallowKeys
             if (vault == null) return;
             OnLocking();
             SafeClip.ClearIfOurs();
-            vault.Dispose(); vault = null; selected = null; editing = null;
+            vault.Dispose(); vault = null; selected = null; editing = null; showHistory = false; lastSearch = "";
             ShowLock(why); WriteStatus();
             GC.Collect();
         }
@@ -280,7 +281,7 @@ namespace HallowKeys
             tray.MouseClick += (s, e) => { if (e.Button == WF.MouseButtons.Left) ShowFromTray(); };
         }
         public void ShowFromTray() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Activate(); }
-        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } OnQuit(); Application.Current.Shutdown(); }
+        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } StopHotkey(); OnQuit(); Application.Current.Shutdown(); }
         partial void OnQuit();
 
         // pipe commands: never any item data
@@ -405,8 +406,8 @@ namespace HallowKeys
         string ScrubSecrets(string text)
         {
             var v = vault; if (v == null) return text;
-            foreach (var it in v.Data.Items.ToList())
-                foreach (var s in new[] { it.Password, it.Username, it.Totp, it.CardNumber, it.Cvc, it.Pin, it.Notes, it.Title, it.Email, it.Phone, it.Address }.Concat(it.Urls).Concat(it.OldPasswords))
+            foreach (var it in v.Data.Items.Concat(v.Data.Trash).ToList())
+                foreach (var s in new[] { it.Password, it.Username, it.Totp, it.CardNumber, it.Cvc, it.Pin, it.Notes, it.Title, it.Email, it.Phone, it.Address }.Concat(it.Urls).Concat(it.OldPasswords).Concat(it.Tags))
                     if (!string.IsNullOrEmpty(s) && s.Length >= 3) text = text.Replace(s, "<hidden>");
             return text;
         }

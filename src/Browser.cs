@@ -52,7 +52,7 @@ namespace HallowKeys
             sp.Children.Add(Card(s2));
             var s3 = new StackPanel();
             s3.Children.Add(new TextBlock { Text = "3. Use it", FontWeight = FontWeights.SemiBold, FontSize = 14 });
-            s3.Children.Add(new TextBlock { Text = "On a login page, click the Hallow Keys button (or the key in the password box) and pick a login. After you sign in somewhere new, the button shows a 1 - click it to save the login. The extension only works while Hallow Keys is running and unlocked.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
+            s3.Children.Add(new TextBlock { Text = "On a login page, click the Hallow Keys button (or the key in the password box) and pick a login. On a page that asks for a 2FA code, click the key in the code box or the 2FA button next to the login. After you sign in somewhere new, the button shows a 1 - click it to save the login. The extension only works while Hallow Keys is running and unlocked. After updating Hallow Keys, click the reload button on the extension in the browser's extensions page.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
             sp.Children.Add(Card(s3));
             var dis = new Button { Content = "Disconnect browsers", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Left, Visibility = NativeHost.Registered ? Visibility.Visible : Visibility.Collapsed };
             dis.Click += (s, e) => { NativeHost.Unregister(); Toast("Disconnected."); ShowMain(); };

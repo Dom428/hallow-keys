@@ -3,7 +3,7 @@
 //    works too). The host answers only the pinned Hallow Keys extension, never reads the vault, and passes each message to the
 //    running, unlocked app over its own pipe, with a per-session secret the app writes for this Windows user.
 //  - The app answers: status, match (titles and usernames of logins for a page - no passwords), fill (one login, only if it
-//    matches the page), save-check / save (after the user confirms in the extension), open.
+//    matches the page), totp (v1.3: just the 2FA code of one matching login), save-check / save (after the user confirms in the extension), open.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -159,7 +159,7 @@ namespace HallowKeys
             {
                 case "match":
                     var list = v.Data.Items.Where(matches).OrderByDescending(i => i.Urls.Any(u => Domain.HostOf(u) == host)).ThenBy(i => i.Title)
-                        .Select(i => (object)new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "username", i.Username } }).Take(30).ToList();
+                        .Select(i => (object)new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "username", i.Username }, { "totp", Totp.Parse(i.Totp) != null } }).Take(30).ToList();
                     return Json(new Dictionary<string, object> { { "ok", true }, { "items", list } });
                 case "fill":
                 {
@@ -167,6 +167,15 @@ namespace HallowKeys
                     if (it == null || !matches(it)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login isn't for this site" } });
                     var spec = Totp.Parse(it.Totp);
                     return Json(new Dictionary<string, object> { { "ok", true }, { "username", it.Username }, { "password", it.Password }, { "totp", spec == null ? null : Totp.Code(spec, Totp.Now()) } });
+                }
+                case "totp":   // v1.3: only the current 2FA code of one login, only if it matches the page
+                {
+                    var it = v.Data.Items.FirstOrDefault(i => i.Id == S(m, "id"));
+                    if (it == null || !matches(it)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login isn't for this site" } });
+                    var spec = Totp.Parse(it.Totp);
+                    if (spec == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login has no 2FA code" } });
+                    var now = Totp.Now();
+                    return Json(new Dictionary<string, object> { { "ok", true }, { "totp", Totp.Code(spec, now) }, { "left", spec.Period - now % spec.Period } });
                 }
                 case "save-check":
                 case "save":
@@ -177,7 +186,7 @@ namespace HallowKeys
                     var state = same == null ? "new" : same.Password == pw ? "same" : "update";
                     if (type == "save-check") return Json(new Dictionary<string, object> { { "ok", true }, { "state", state } });
                     if (state == "same") return Json(new Dictionary<string, object> { { "ok", true }, { "state", state } });
-                    if (same != null) { if (same.Password.Length > 0) same.OldPasswords.Insert(0, same.Password); same.Password = pw; same.PasswordChanged = same.Updated = DateTime.Now; }
+                    if (same != null) { Organize.RecordOldPassword(same, same.Password, DateTime.Now); same.Password = pw; same.PasswordChanged = same.Updated = DateTime.Now; }
                     else
                     {
                         var u = Domain.Parse(url);

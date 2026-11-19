@@ -31,12 +31,25 @@ async function fill(tab, id) {
   return { ok: done > 0, msg: done > 0 ? 'Filled' : 'No login form found on this page' };
 }
 
+// v1.3: just the 2FA code of one login, into the page's 2FA box (same checks as a fill)
+async function fillTotp(tab, id) {
+  const url = tab && tab.url; const origin = originOf(url);
+  if (!origin) return { ok: false, msg: 'Not a web page' };
+  const r = await ask({ type: 'totp', id: id, url: url });
+  if (!r.ok) return r;
+  let done = 0;
+  try { const res = await chrome.tabs.sendMessage(tab.id, { type: 'hk-fill-totp', origin: origin, totp: r.totp }); done = res && res.filled ? res.filled : 0; } catch (e) { }
+  r.totp = null;
+  return { ok: done > 0, msg: done > 0 ? 'Filled the 2FA code' : 'No 2FA code box found on this page' };
+}
+
 chrome.runtime.onMessage.addListener((msg, sender, send) => {
   (async () => {
     if (msg.type === 'popup-status') { send(await ask({ type: 'status' })); return; }
     if (msg.type === 'popup-match') { send(await ask({ type: 'match', url: msg.url })); return; }
     if (msg.type === 'popup-open') { send(await ask({ type: 'open' })); return; }
     if (msg.type === 'popup-fill') { const tab = await chrome.tabs.get(msg.tabId); send(await fill(tab, msg.id)); return; }
+    if (msg.type === 'popup-totp') { const tab = await chrome.tabs.get(msg.tabId); send(await fillTotp(tab, msg.id)); return; }
     if (msg.type === 'popup-pending') { const k = 'pending-' + msg.tabId; const s = await chrome.storage.session.get(k); send(s[k] ? { host: s[k].host, username: s[k].username, state: s[k].state } : null); return; }
     if (msg.type === 'popup-save') {
       const k = 'pending-' + msg.tabId; const s = await chrome.storage.session.get(k); const p = s[k];
@@ -50,6 +63,7 @@ chrome.runtime.onMessage.addListener((msg, sender, send) => {
     if (!top || here !== top) { send(null); return; }   // cross-origin frames get nothing
     if (msg.type === 'inline-match') { send(await ask({ type: 'match', url: sender.tab.url })); return; }
     if (msg.type === 'inline-fill') { send(await fill(sender.tab, msg.id)); return; }
+    if (msg.type === 'inline-totp') { send(await fillTotp(sender.tab, msg.id)); return; }
     if (msg.type === 'submitted') {
       // a login form was sent: offer to save it (the popup asks you; nothing is saved without your OK)
       const c = await ask({ type: 'save-check', url: sender.tab.url, username: msg.username, password: msg.password });

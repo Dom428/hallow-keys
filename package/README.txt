@@ -1,0 +1,26 @@
+HALLOW KEYS - your passwords, on your PC
+
+Not audited by security experts: keep using a tried-and-tested password manager for anything that
+matters, and keep backups.
+
+HOW TO INSTALL
+1. Right-click the zip > Properties > tick "Unblock" > OK
+2. Right-click the zip > Extract All
+3. Double-click INSTALL.bat (no admin needed)
+4. Pick a master password and print your recovery sheet.
+
+WHAT'S NEW IN 1.0
+- First version.
+
+WHAT IT DOES
+- Logins, secure notes, cards and identities, with folders, favourites, search and small files
+- A password generator, Password Health (weak, reused, old) and 2FA codes
+- Import from NordPass (Settings > Export items gives a CSV), other CSV exports and Bitwarden JSON
+- Encrypted backups, a recovery sheet, auto-lock and a clipboard that clears itself
+
+YOUR VAULT
+%APPDATA%\HallowKeys\vault.hkvault (the previous save is next to it as .bak). Uninstalling never
+deletes it.
+
+CREDITS
+Icons: Font Awesome Free 6.7.2 by Fonticons, Inc. (https://fontawesome.com), licensed CC BY 4.0 - see FontAwesome-LICENSE.txt.

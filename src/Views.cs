@@ -1,0 +1,384 @@
+﻿// Hallow Keys - the unlocked window: sidebar, item list with search, and an item's details / editor.
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
+using System.Windows.Input;
+using System.Windows.Media;
+using System.Windows.Threading;
+
+namespace HallowKeys
+{
+    public partial class MainWindow
+    {
+        string view = "all";        // all, fav, login, note, card, identity, folder:<name>, health, generator, transfer, settings
+        Item selected, editing; bool isNew;
+        TextBox search; StackPanel listPanel; Border detail; TextBlock toast; DispatcherTimer toastTimer, totpTimer;
+        static readonly Dictionary<string, string> TypeIcon = new Dictionary<string, string> { { "login", "key" }, { "note", "note-sticky" }, { "card", "credit-card" }, { "identity", "id-card" } };
+        static readonly Dictionary<string, string> TypeName = new Dictionary<string, string> { { "login", "Login" }, { "note", "Secure note" }, { "card", "Card" }, { "identity", "Identity" } };
+
+        public void ShowMain()
+        {
+            if (vault == null) { ShowLock(); return; }
+            var dock = new DockPanel();
+            // ---- sidebar
+            var side = new DockPanel { Width = 230, Background = (Brush)FindResource("Panel") };
+            var top = new StackPanel { Margin = new Thickness(16, 16, 12, 0) };
+            top.Children.Add(TitleRow(20));
+            if (pending != null) { var ub = new Button { Content = "Update to v" + pending.Version.ToString(2), Style = St("Accent"), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left }; ub.Click += (s, e) => InstallUpdate(); top.Children.Add(ub); }
+            DockPanel.SetDock(top, Dock.Top); side.Children.Add(top);
+            var bottom = new StackPanel { Margin = new Thickness(12, 0, 12, 14) };
+            var lockBtn = new Button { Content = "Lock now", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Stretch }; lockBtn.Click += (s, e) => Lock("Locked.");
+            bottom.Children.Add(lockBtn);
+            DockPanel.SetDock(bottom, Dock.Bottom); side.Children.Add(bottom);
+            var nav = new StackPanel { Margin = new Thickness(8, 14, 8, 8) };
+            var items = vault.Data.Items;
+            Action<string, string, string, int> navBtn = (id, icon, label, count) =>
+            {
+                var b = new Button { Style = St("Nav"), Tag = id == view ? "on" : null, Content = NavContent(icon, label, count) };
+                b.Click += (s, e) => { view = id; selected = null; editing = null; ShowMain(); };
+                nav.Children.Add(b);
+            };
+            navBtn("all", "list", "All items", items.Count);
+            navBtn("fav", "star", "Favourites", items.Count(i => i.Favorite));
+            navBtn("login", "key", "Logins", items.Count(i => i.Type == "login"));
+            navBtn("note", "note-sticky", "Secure notes", items.Count(i => i.Type == "note"));
+            navBtn("card", "credit-card", "Cards", items.Count(i => i.Type == "card"));
+            navBtn("identity", "id-card", "Identities", items.Count(i => i.Type == "identity"));
+            if (vault.Data.Folders.Count > 0)
+            {
+                nav.Children.Add(new TextBlock { Text = "FOLDERS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
+                foreach (var f in vault.Data.Folders.OrderBy(x => x)) navBtn("folder:" + f, "folder", f, items.Count(i => i.Folder == f));
+            }
+            nav.Children.Add(new TextBlock { Text = "TOOLS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
+            var rep = Health.Check(vault.Data, S.OldDays, LeakedIds());
+            navBtn("health", "heart-pulse", "Password Health", rep.Weak.Count + rep.Reused.Count + rep.Leaked.Count);
+            navBtn("generator", "dice", "Generator", -1);
+            navBtn("transfer", "file-import", "Import and backup", -1);
+            ExtraNav(nav, navBtn);
+            navBtn("settings", "gear", "Settings", -1);
+            side.Children.Add(new ScrollViewer { Content = nav, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+            DockPanel.SetDock(side, Dock.Left); dock.Children.Add(side);
+            // ---- toast line at the bottom
+            toast = new TextBlock { Margin = new Thickness(16, 6, 16, 8), Foreground = B("#6ED28C"), TextTrimming = TextTrimming.CharacterEllipsis };
+            DockPanel.SetDock(toast, Dock.Bottom); dock.Children.Add(toast);
+            // ---- pages
+            if (view == "health") dock.Children.Add(HealthPage(rep));
+            else if (view == "generator") dock.Children.Add(GeneratorPage(null));
+            else if (view == "transfer") dock.Children.Add(TransferPage());
+            else if (view == "settings") dock.Children.Add(SettingsPage());
+            else if (ExtraPage(view, dock)) { }
+            else
+            {
+                var listCol = new DockPanel { Width = 330, Margin = new Thickness(14, 14, 0, 0) };
+                var bar = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
+                var add = new Button { Content = "New item", Style = St("Accent"), Margin = new Thickness(8, 0, 0, 0) };
+                add.Click += (s, e) => NewItemMenu(add);
+                DockPanel.SetDock(add, Dock.Right); bar.Children.Add(add);
+                search = new TextBox { Style = St("Search"), Text = lastSearch };
+                search.TextChanged += (s, e) => { lastSearch = search.Text; FillList(); };
+                bar.Children.Add(search);
+                DockPanel.SetDock(bar, Dock.Top); listCol.Children.Add(bar);
+                listPanel = new StackPanel();
+                listCol.Children.Add(new ScrollViewer { Content = listPanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
+                DockPanel.SetDock(listCol, Dock.Left); dock.Children.Add(listCol);
+                detail = new Border { Margin = new Thickness(14, 14, 14, 0), Background = (Brush)FindResource("Panel"), CornerRadius = new CornerRadius(12) };
+                dock.Children.Add(detail);
+                FillList(); ShowDetail();
+            }
+            root.Child = dock;
+        }
+        partial void ExtraNavImpl(StackPanel nav, Action<string, string, string, int> navBtn);
+        void ExtraNav(StackPanel nav, Action<string, string, string, int> navBtn) { ExtraNavImpl(nav, navBtn); }
+        bool ExtraPage(string v, DockPanel dock) { bool handled = false; ExtraPageImpl(v, dock, ref handled); return handled; }
+        partial void ExtraPageImpl(string v, DockPanel dock, ref bool handled);
+        HashSet<string> LeakedIds() { HashSet<string> h = null; LeakedImpl(ref h); return h; }
+        partial void LeakedImpl(ref HashSet<string> ids);
+        string lastSearch = "";
+
+        UIElement NavContent(string icon, string label, int count)
+        {
+            var d = new DockPanel { Width = 190 };
+            if (count >= 0) { var c = new TextBlock { Text = count.ToString(), Foreground = Muted, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center }; DockPanel.SetDock(c, Dock.Right); d.Children.Add(c); }
+            var ic = Icons.Make(icon, 14, (Brush)FindResource("Muted")); ic.Margin = new Thickness(0, 0, 10, 0); ic.VerticalAlignment = VerticalAlignment.Center; d.Children.Add(ic);
+            d.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            return d;
+        }
+        public void Toast(string text) { Toast(text, false); }
+        public void Toast(string text, bool bad)
+        {
+            if (toast == null) { if (lockStatus != null) lockStatus.Text = text; return; }
+            toast.Text = text; toast.Foreground = bad ? B("#F0BE5A") : B("#6ED28C");
+            if (toastTimer == null) { toastTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(6) }; toastTimer.Tick += (s, e) => { toastTimer.Stop(); if (toast != null) toast.Text = ""; }; }
+            toastTimer.Stop(); toastTimer.Start();
+        }
+        void SaveVault(string msg)
+        {
+            try { vault.Save(); WriteStatus(); AfterSave(); if (msg != null) Toast(msg); }
+            catch (Exception e) { Toast("Couldn't save the vault: " + e.Message, true); }
+        }
+        partial void AfterSaveImpl();
+        void AfterSave() { AfterSaveImpl(); }
+
+        IEnumerable<Item> Filtered()
+        {
+            var items = vault.Data.Items.AsEnumerable();
+            if (view == "fav") items = items.Where(i => i.Favorite);
+            else if (view.StartsWith("folder:")) { var f = view.Substring(7); items = items.Where(i => i.Folder == f); }
+            else if (TypeName.ContainsKey(view)) items = items.Where(i => i.Type == view);
+            var q = (lastSearch ?? "").Trim();
+            if (q.Length > 0)   // search titles, usernames, sites, folders and notes - never passwords
+                items = items.Where(i => new[] { i.Title, i.Username, i.Folder, i.Notes, i.CardHolder, i.FullName, i.Email }.Concat(i.Urls).Any(x => x != null && x.IndexOf(q, StringComparison.OrdinalIgnoreCase) >= 0));
+            return items.OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase);
+        }
+        void FillList()
+        {
+            if (listPanel == null) return;
+            listPanel.Children.Clear();
+            var list = Filtered().ToList();
+            if (list.Count == 0) listPanel.Children.Add(new TextBlock { Text = vault.Data.Items.Count == 0 ? "Nothing here yet. Add an item with New item, or import from NordPass in Import and backup." : "Nothing matches.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 8, 4, 0) });
+            foreach (var it in list)
+            {
+                var item = it;
+                var b = new Button { Style = St("Nav"), Tag = selected == it ? "on" : null, Padding = new Thickness(10, 7, 10, 7), HorizontalContentAlignment = HorizontalAlignment.Stretch };
+                var d = new DockPanel();
+                var ic = Icons.Make(TypeIcon.ContainsKey(it.Type) ? TypeIcon[it.Type] : "key", 18, B(Program.AccentHex)); ic.Margin = new Thickness(0, 0, 12, 0); ic.VerticalAlignment = VerticalAlignment.Center;
+                d.Children.Add(ic);
+                if (it.Favorite) { var st = Icons.Make("star", 11, B("#F0BE5A")); st.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(st, Dock.Right); d.Children.Add(st); }
+                var tx = new StackPanel();
+                tx.Children.Add(new TextBlock { Text = it.Title, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
+                tx.Children.Add(new TextBlock { Text = Subtitle(it), Foreground = Muted, FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis });
+                d.Children.Add(tx); b.Content = d;
+                b.Click += (s, e) => { selected = item; editing = null; FillList(); ShowDetail(); };
+                listPanel.Children.Add(b);
+            }
+        }
+        static string Subtitle(Item i)
+        {
+            if (i.Type == "login") return string.Join(" - ", new[] { i.Username, i.Host }.Where(x => !string.IsNullOrEmpty(x)));
+            if (i.Type == "card") return i.CardNumber.Length >= 4 ? "**** " + i.CardNumber.Replace(" ", "").Substring(Math.Max(0, i.CardNumber.Replace(" ", "").Length - 4)) : i.CardHolder;
+            if (i.Type == "identity") return i.FullName;
+            return i.Folder;
+        }
+        void NewItemMenu(Button anchor)
+        {
+            var m = new ContextMenu();
+            foreach (var kv in TypeName) { var t = kv.Key; var mi = new MenuItem { Header = kv.Value }; mi.Click += (s, e) => StartEdit(new Item { Type = t, Folder = view.StartsWith("folder:") ? view.Substring(7) : "", Favorite = view == "fav" }, true); m.Items.Add(mi); }
+            m.PlacementTarget = anchor; m.Placement = PlacementMode.Bottom; m.IsOpen = true;
+        }
+
+        // ---- details
+        void ShowDetail()
+        {
+            if (totpTimer != null) totpTimer.Stop();
+            if (detail == null) return;
+            if (editing != null) { detail.Child = Editor(editing); return; }
+            if (selected == null || !vault.Data.Items.Contains(selected)) { selected = null; detail.Child = new TextBlock { Text = "Pick an item on the left.", Foreground = Muted, Margin = new Thickness(20) }; return; }
+            var it = selected;
+            var sp = new StackPanel { Margin = new Thickness(22, 18, 22, 18) };
+            var head = new DockPanel { Margin = new Thickness(0, 0, 0, 14) };
+            var btns = new StackPanel { Orientation = Orientation.Horizontal };
+            var fav = new Button { Content = it.Favorite ? "Unfavourite" : "Favourite", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) };
+            fav.Click += (s, e) => { it.Favorite = !it.Favorite; it.Updated = DateTime.Now; SaveVault(null); FillList(); ShowDetail(); };
+            var ed = new Button { Content = "Edit", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) }; ed.Click += (s, e) => StartEdit(it, false);
+            var del = new Button { Content = "Delete", Style = St("Btn") };
+            del.Click += (s, e) => { if (MessageBox.Show(this, "Delete \"" + it.Title + "\"? This can't be undone (your previous save is kept as vault.hkvault.bak until the next change).", "Hallow Keys", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return; vault.Data.Items.Remove(it); selected = null; SaveVault("Deleted."); ShowMain(); };
+            btns.Children.Add(fav); btns.Children.Add(ed); btns.Children.Add(del);
+            DockPanel.SetDock(btns, Dock.Right); head.Children.Add(btns);
+            var ht = new StackPanel();
+            ht.Children.Add(new TextBlock { Text = it.Title, FontSize = 19, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+            ht.Children.Add(new TextBlock { Text = TypeName[it.Type] + (it.Folder.Length > 0 ? "  -  " + it.Folder : ""), Foreground = Muted });
+            head.Children.Add(ht); sp.Children.Add(head);
+            if (it.Type == "login")
+            {
+                Field(sp, "Username", it.Username, false);
+                Field(sp, "Password", it.Password, true, it.Password.Length > 0 ? Health.Rating(Health.Bits(it.Password)) : null);
+                var spec = Totp.Parse(it.Totp);
+                if (spec != null) TotpRow(sp, spec);
+                foreach (var u in it.Urls) UrlRow(sp, u);
+            }
+            else if (it.Type == "card")
+            {
+                Field(sp, "Name on card", it.CardHolder, false); Field(sp, "Card number", it.CardNumber, true); Field(sp, "Expiry", it.Expiry, false); Field(sp, "Security code", it.Cvc, true); Field(sp, "PIN", it.Pin, true);
+            }
+            else if (it.Type == "identity")
+            {
+                Field(sp, "Full name", it.FullName, false); Field(sp, "Email", it.Email, false); Field(sp, "Phone", it.Phone, false); Field(sp, "Address", it.Address, false);
+                Field(sp, "City", it.City, false); Field(sp, "Postcode", it.PostCode, false); Field(sp, "Country", it.Country, false);
+            }
+            if (it.Notes.Length > 0)
+            {
+                sp.Children.Add(new TextBlock { Text = it.Type == "note" ? "Note" : "Notes", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 10, 0, 4) });
+                sp.Children.Add(new TextBox { Style = St("Area"), Text = it.Notes, IsReadOnly = true, MaxHeight = 220 });
+            }
+            if (it.Files.Count > 0)
+            {
+                sp.Children.Add(new TextBlock { Text = "Files", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 12, 0, 4) });
+                foreach (var f in it.Files) { var file = f; var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) }; var sv = new Button { Content = "Save file", Style = St("Btn") }; sv.Click += (s, e) => SaveAttachment(file); DockPanel.SetDock(sv, Dock.Right); row.Children.Add(sv); row.Children.Add(new TextBlock { Text = f.Name + "  (" + Size(f.Data.Length) + ")", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(row); }
+            }
+            sp.Children.Add(new TextBlock { Text = "Changed " + it.Updated.ToString("d MMM yyyy") + (it.Type == "login" && it.Password.Length > 0 ? "  -  password set " + it.PasswordChanged.ToString("d MMM yyyy") : ""), Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 16, 0, 0) });
+            detail.Child = new ScrollViewer { Content = sp, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        }
+        static string Size(long b) { return b < 1024 ? b + " B" : b < 1048576 ? (b / 1024) + " KB" : (b / 1048576.0).ToString("0.0") + " MB"; }
+        // one field: label, value (hidden for secrets until Show), Copy
+        void Field(StackPanel sp, string label, string value, bool secret, string note = null)
+        {
+            if (string.IsNullOrEmpty(value)) return;
+            sp.Children.Add(new TextBlock { Text = label + (note != null ? "  -  " + note : ""), Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+            var row = new DockPanel();
+            var bs = new StackPanel { Orientation = Orientation.Horizontal };
+            var tb = new TextBlock { Text = secret ? new string('•', Math.Min(16, Math.Max(8, value.Length))) : value, FontSize = 14, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis, FontFamily = secret ? new FontFamily("Consolas") : FontFamily };
+            if (secret)
+            {
+                var show = new Button { Content = "Show", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) };
+                show.Click += (s, e) => { bool shown = (string)show.Content == "Hide"; tb.Text = shown ? new string('•', Math.Min(16, Math.Max(8, value.Length))) : value; show.Content = shown ? "Show" : "Hide"; };
+                bs.Children.Add(show);
+            }
+            var copy = new Button { Content = "Copy", Style = St("Btn") };
+            copy.Click += (s, e) => { if (SafeClip.Copy(value)) Toast(label + " copied - the clipboard clears in " + SafeClip.ClearSeconds + " seconds."); };
+            bs.Children.Add(copy);
+            DockPanel.SetDock(bs, Dock.Right); row.Children.Add(bs); row.Children.Add(tb);
+            sp.Children.Add(row);
+        }
+        void UrlRow(StackPanel sp, string url)
+        {
+            sp.Children.Add(new TextBlock { Text = "Website", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+            var row = new DockPanel(); var u = Domain.Parse(url);
+            var bs = new StackPanel { Orientation = Orientation.Horizontal };
+            if (u != null) { var open = new Button { Content = "Open", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) }; open.Click += (s, e) => { try { System.Diagnostics.Process.Start(u.AbsoluteUri); } catch { } }; bs.Children.Add(open); }
+            var copy = new Button { Content = "Copy", Style = St("Btn") }; copy.Click += (s, e) => { Clipboard.SetText(url); Toast("Address copied."); }; bs.Children.Add(copy);
+            DockPanel.SetDock(bs, Dock.Right); row.Children.Add(bs); row.Children.Add(new TextBlock { Text = url, FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
+            sp.Children.Add(row);
+        }
+        void TotpRow(StackPanel sp, Totp.Spec spec)
+        {
+            sp.Children.Add(new TextBlock { Text = "2FA code", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+            var row = new DockPanel();
+            var code = new TextBlock { FontSize = 20, FontWeight = FontWeights.SemiBold, FontFamily = new FontFamily("Consolas"), VerticalAlignment = VerticalAlignment.Center };
+            var left = new TextBlock { Foreground = Muted, Margin = new Thickness(12, 0, 0, 0), VerticalAlignment = VerticalAlignment.Center };
+            var copy = new Button { Content = "Copy", Style = St("Btn") };
+            Action tick = () => { var now = Totp.Now(); var c = Totp.Code(spec, now); code.Text = c.Length == 6 ? c.Substring(0, 3) + " " + c.Substring(3) : c.Substring(0, 4) + " " + c.Substring(4); left.Text = (spec.Period - now % spec.Period) + " s"; };
+            copy.Click += (s, e) => { if (SafeClip.Copy(Totp.Code(spec, Totp.Now()))) Toast("2FA code copied."); };
+            DockPanel.SetDock(copy, Dock.Right); row.Children.Add(copy);
+            var lp = new StackPanel { Orientation = Orientation.Horizontal }; lp.Children.Add(code); lp.Children.Add(left); row.Children.Add(lp);
+            sp.Children.Add(row); tick();
+            totpTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) }; totpTimer.Tick += (s, e) => tick(); totpTimer.Start();
+        }
+        void SaveAttachment(Attachment f)
+        {
+            var dlg = new Microsoft.Win32.SaveFileDialog { FileName = f.Name, Title = "Save the file (it's stored unencrypted wherever you save it)" };
+            if (dlg.ShowDialog(this) != true) return;
+            try { System.IO.File.WriteAllBytes(dlg.FileName, f.Data); Toast("Saved " + System.IO.Path.GetFileName(dlg.FileName) + "."); } catch (Exception e) { Toast("Couldn't save: " + e.Message, true); }
+        }
+
+        // ---- editor
+        void StartEdit(Item it, bool fresh)
+        {
+            isNew = fresh;
+            // edit a copy, so Cancel leaves the item as it was
+            editing = new Item { Id = it.Id, Type = it.Type, Title = it.Title, Folder = it.Folder, Favorite = it.Favorite, Created = it.Created, Updated = it.Updated, PasswordChanged = it.PasswordChanged,
+                Username = it.Username, Password = it.Password, Totp = it.Totp, Urls = it.Urls.ToList(), CardHolder = it.CardHolder, CardNumber = it.CardNumber, Expiry = it.Expiry, Cvc = it.Cvc, Pin = it.Pin,
+                FullName = it.FullName, Email = it.Email, Phone = it.Phone, Address = it.Address, City = it.City, PostCode = it.PostCode, Country = it.Country, Notes = it.Notes, Files = it.Files.ToList(), OldPasswords = it.OldPasswords.ToList() };
+            if (detail == null) { view = it.Type; ShowMain(); }
+            detail.Child = Editor(editing);
+        }
+        UIElement Editor(Item e)
+        {
+            var sp = new StackPanel { Margin = new Thickness(22, 18, 22, 18) };
+            sp.Children.Add(new TextBlock { Text = (isNew ? "New " : "Edit ") + TypeName[e.Type].ToLowerInvariant(), FontSize = 17, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 0, 0, 8) });
+            var fields = new List<Action>();
+            Func<string, string, Action<string>, TextBox> text = (label, val, set) =>
+            {
+                sp.Children.Add(new TextBlock { Text = label, Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+                var tb = new TextBox { Style = St("Field"), Text = val }; sp.Children.Add(tb); fields.Add(() => set(tb.Text.Trim())); return tb;
+            };
+            var title = text("Title", e.Title, v => e.Title = v);
+            if (e.Type == "login")
+            {
+                text("Username or email", e.Username, v => e.Username = v);
+                sp.Children.Add(new TextBlock { Text = "Password", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+                var prow = new DockPanel();
+                var gen = new Button { Content = "Generate", Style = St("Btn"), Margin = new Thickness(6, 0, 0, 0) };
+                var showP = new Button { Content = "Show", Style = St("Btn"), Margin = new Thickness(6, 0, 0, 0) };
+                DockPanel.SetDock(gen, Dock.Right); DockPanel.SetDock(showP, Dock.Right); prow.Children.Add(gen); prow.Children.Add(showP);
+                var grid = new Grid();
+                var pb = new PasswordBox { Style = St("Pwd"), Password = e.Password }; var tb = new TextBox { Style = St("Field"), Text = e.Password, Visibility = Visibility.Collapsed, FontFamily = new FontFamily("Consolas") };
+                grid.Children.Add(pb); grid.Children.Add(tb); prow.Children.Add(grid); sp.Children.Add(prow);
+                var meter = new TextBlock { Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 3, 0, 0) }; sp.Children.Add(meter);
+                Action<string> rate = p => { var b = Health.Bits(p); meter.Text = p.Length == 0 ? "" : Health.Rating(b) + " (about " + (int)b + " bits)"; meter.Foreground = b < 40 ? B("#F0BE5A") : b < 60 ? Muted : B("#6ED28C"); };
+                pb.PasswordChanged += (s, a) => { if (tb.Visibility != Visibility.Visible) { tb.Text = pb.Password; rate(pb.Password); } };
+                tb.TextChanged += (s, a) => { if (tb.Visibility == Visibility.Visible) { pb.Password = tb.Text; rate(tb.Text); } };
+                showP.Click += (s, a) => { bool vis = tb.Visibility == Visibility.Visible; tb.Visibility = vis ? Visibility.Collapsed : Visibility.Visible; pb.Visibility = vis ? Visibility.Visible : Visibility.Collapsed; showP.Content = vis ? "Show" : "Hide"; };
+                gen.Click += (s, a) => { var p = S.GenWords ? Generator.Passphrase(S.GenWordCount, "-", true, true) : Generator.Password(S.GenLength, S.GenLower, S.GenUpper, S.GenDigits, S.GenSymbols, S.GenAvoid); pb.Password = p; tb.Text = p; rate(p); };
+                rate(e.Password);
+                fields.Add(() => { var np = pb.Password; if (np != e.Password) { if (e.Password.Length > 0) { e.OldPasswords.Insert(0, e.Password); if (e.OldPasswords.Count > 10) e.OldPasswords.RemoveAt(10); } e.Password = np; e.PasswordChanged = DateTime.Now; } });
+                var urls = text("Website addresses (one per line)", string.Join("\n", e.Urls), v => e.Urls = v.Split('\n').Select(x => x.Trim()).Where(x => x.Length > 0).ToList());
+                urls.AcceptsReturn = true; urls.Style = St("Area");
+                text("2FA (an otpauth:// link or the setup key)", e.Totp, v => e.Totp = v);
+            }
+            else if (e.Type == "card")
+            {
+                text("Name on card", e.CardHolder, v => e.CardHolder = v); text("Card number", e.CardNumber, v => e.CardNumber = v);
+                text("Expiry (MM/YY)", e.Expiry, v => e.Expiry = v); text("Security code", e.Cvc, v => e.Cvc = v); text("PIN", e.Pin, v => e.Pin = v);
+            }
+            else if (e.Type == "identity")
+            {
+                text("Full name", e.FullName, v => e.FullName = v); text("Email", e.Email, v => e.Email = v); text("Phone", e.Phone, v => e.Phone = v);
+                text("Address", e.Address, v => e.Address = v); text("City", e.City, v => e.City = v); text("Postcode", e.PostCode, v => e.PostCode = v); text("Country", e.Country, v => e.Country = v);
+            }
+            var notes = text(e.Type == "note" ? "Note" : "Notes", e.Notes, v => e.Notes = v); notes.Style = St("Area"); notes.AcceptsReturn = true;
+            // folder and favourite
+            sp.Children.Add(new TextBlock { Text = "Folder (type a new name to make one)", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
+            var folder = new TextBox { Style = St("Field"), Text = e.Folder };
+            sp.Children.Add(folder); fields.Add(() => e.Folder = (folder.Text ?? "").Trim());
+            if (vault.Data.Folders.Count > 0)
+            {
+                var chips = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
+                foreach (var fn in vault.Data.Folders.OrderBy(x => x)) { var name = fn; var c = new Button { Content = name, Style = St("Btn"), Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 4, 4) }; c.Click += (s, a) => folder.Text = name; chips.Children.Add(c); }
+                var none = new Button { Content = "No folder", Style = St("Btn"), Padding = new Thickness(8, 2, 8, 2), Margin = new Thickness(0, 0, 4, 4) }; none.Click += (s, a) => folder.Text = ""; chips.Children.Add(none);
+                sp.Children.Add(chips);
+            }
+            var favC = new CheckBox { Content = new TextBlock { Text = "Favourite" }, IsChecked = e.Favorite, Style = St("Switch"), Margin = new Thickness(0, 10, 0, 0) }; sp.Children.Add(favC); fields.Add(() => e.Favorite = favC.IsChecked == true);
+            // files
+            sp.Children.Add(new TextBlock { Text = "Files (up to 10 MB each, kept encrypted in the vault)", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 12, 0, 3) });
+            var filesPanel = new StackPanel(); sp.Children.Add(filesPanel);
+            Action fillFiles = null;
+            fillFiles = () =>
+            {
+                filesPanel.Children.Clear();
+                foreach (var f in e.Files.ToList()) { var file = f; var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) }; var rm = new Button { Content = "Remove", Style = St("Btn") }; rm.Click += (s, a) => { e.Files.Remove(file); fillFiles(); }; DockPanel.SetDock(rm, Dock.Right); row.Children.Add(rm); row.Children.Add(new TextBlock { Text = f.Name + "  (" + Size(f.Data.Length) + ")", VerticalAlignment = VerticalAlignment.Center }); filesPanel.Children.Add(row); }
+                var add = new Button { Content = "Add file", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 4, 0, 0) };
+                add.Click += (s, a) =>
+                {
+                    var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Add a file to this item" }; if (dlg.ShowDialog(this) != true) return;
+                    var fi = new System.IO.FileInfo(dlg.FileName); if (fi.Length > Vault.MaxFileBytes) { Toast("That file is over 10 MB.", true); return; }
+                    e.Files.Add(new Attachment { Name = fi.Name, Data = System.IO.File.ReadAllBytes(fi.FullName) }); fillFiles();
+                };
+                filesPanel.Children.Add(add);
+            };
+            fillFiles();
+            // save / cancel
+            var bar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 18, 0, 0) };
+            var save = new Button { Content = "Save", Style = St("Accent"), MinWidth = 100, Margin = new Thickness(0, 0, 8, 0) };
+            var cancel = new Button { Content = "Cancel", Style = St("Btn") };
+            save.Click += (s, a) =>
+            {
+                foreach (var f in fields) f();
+                if (e.Title.Length == 0) e.Title = e.Type == "login" ? (Domain.HostOf(e.Urls.FirstOrDefault()) ?? e.Username) : TypeName[e.Type];
+                if (e.Title.Length == 0) e.Title = TypeName[e.Type];
+                if (e.Totp.Length > 0 && Totp.Parse(e.Totp) == null) { Toast("The 2FA setting isn't an otpauth:// link or a valid setup key.", true); return; }
+                e.Updated = DateTime.Now;
+                if (e.Folder.Length > 0 && !vault.Data.Folders.Contains(e.Folder)) vault.Data.Folders.Add(e.Folder);
+                var old = vault.Data.Items.FirstOrDefault(x => x.Id == e.Id);
+                if (old != null) vault.Data.Items[vault.Data.Items.IndexOf(old)] = e; else vault.Data.Items.Add(e);
+                selected = e; editing = null; SaveVault("Saved."); ShowMain();
+            };
+            cancel.Click += (s, a) => { editing = null; ShowDetail(); };
+            bar.Children.Add(save); bar.Children.Add(cancel); sp.Children.Add(bar);
+            Dispatcher.BeginInvoke(new Action(() => title.Focus()), DispatcherPriority.Input);
+            return new ScrollViewer { Content = sp, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
+        }
+    }
+}

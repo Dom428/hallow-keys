@@ -1,0 +1,12 @@
+# build output
+HallowKeys.exe
+# never commit a vault, backup or export
+*.hkvault
+*.hkbackup
+*.bak
+*.csv
+*.pem
+phone.bin
+hello.bin
+session.key
+

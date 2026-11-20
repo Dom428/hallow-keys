@@ -197,6 +197,7 @@ namespace HallowKeys
             editing = null; view = "health"; ShowMain(); tall(this, "watchtower.png"); save(this, "watchtower-top.png");
             view = "settings"; ShowMain(); tall(this, "settings-17.png");
             SnapTwoFa = null; SnapBreaches = null; view = "health"; ShowMain(); save(this, "watchtower-no-lists.png");
+            SnapExtra20(save);   // v2.0
         }
     }
 }

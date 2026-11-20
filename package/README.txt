@@ -7,8 +7,20 @@ HOW TO INSTALL
 1. Right-click the zip > Properties > tick "Unblock" > OK
 2. Right-click the zip > Extract All
 3. Double-click INSTALL.bat (no admin needed)
-4. Pick a master password and print your recovery sheet.
+4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.0 - SYNC BETWEEN YOUR PCS (NO HALLOW SERVER)
+- Settings > Sync: pick a folder that OneDrive, Google Drive, Dropbox, a NAS or Syncthing keeps in step, turn sync on, and your
+  PCs share one vault. Changes merge item by item; if the same item changed on two PCs, both versions are kept (one as a
+  "conflict copy"). Each PC keeps its own copy and works offline. The sidebar shows "Synced 2 min ago" / "Waiting for OneDrive".
+- New vaults get a Secret Key (kept on this PC, printed on the new Emergency Kit) and Argon2id for the master password, so a
+  copy of your vault in the cloud can't be cracked by guessing your password. Older vaults keep working - click
+  "Upgrade protection" (needed for sync) and print the Emergency Kit.
+- Another PC: install Hallow Keys there, click "Open a synced vault", pick the folder, type your master password and Secret Key.
+- Your recovery code still opens the vault without the Secret Key.
+- Settings > Restore an older version: the last 30 encrypted snapshots on this PC.
+- The vault is upgraded when it's next saved; Hallow Keys 1.7 can't open it afterwards (it says so). The 1.7 file is kept next
+  to it as vault.hkvault.format2.bak.
 WHAT'S NEW IN 1.7 - WATCHTOWER-LEVEL HEALTH
 - Password Health has one security score (out of 100, the formula is on the page) and a "Fix these first" list with
   one-click fixes: the site's change-password page, a new password, how to add 2FA, switch to https.

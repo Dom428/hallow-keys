@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("1.7.0.0")]
-[assembly: AssemblyFileVersion("1.7.0.0")]
+[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyFileVersion("2.0.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "1.7";
+        public const string Version = "2.0";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -143,9 +143,15 @@ namespace HallowKeys
             {
                 sp.Children.Add(new TextBlock { Text = "Master password", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 18, 0, 6) });
                 var pb = new PasswordBox { Style = St("Pwd") }; sp.Children.Add(pb);
+                TextBox skTb = null;
+                if (LockNeedsSecretKey())   // v2.0: this PC doesn't have the vault's Secret Key (yet)
+                {
+                    sp.Children.Add(new TextBlock { Text = "Secret Key", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
+                    var skb = SecretKeyBox(); skTb = skb.Item1; sp.Children.Add(skb.Item1); sp.Children.Add(skb.Item2);
+                }
                 var btns = new WrapPanel { Margin = new Thickness(0, 12, 0, 0) };
                 var unlock = new Button { Content = "Unlock", Style = St("Accent"), IsDefault = true, MinWidth = 110, Margin = new Thickness(0, 0, 8, 0) };
-                unlock.Click += (s, e) => UnlockWith(pb);
+                unlock.Click += (s, e) => UnlockWith(pb, skTb);
                 btns.Children.Add(unlock);
                 if (S.UseHello && Hello.Enabled) { var hb = new Button { Content = "Windows Hello", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; hb.Click += (s, e) => UnlockHello(); btns.Children.Add(hb); }
                 sp.Children.Add(btns);
@@ -157,7 +163,7 @@ namespace HallowKeys
             else
             {
                 sp.Children.Add(new TextBlock { Text = "Create your vault", FontSize = 16, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 16, 0, 4) });
-                sp.Children.Add(new TextBlock { Text = "Pick a master password you'll remember - a few random words work well. It's the only key to your vault: it's never stored, and nobody can reset it for you. You'll also get a recovery code to print.", Foreground = Muted, TextWrapping = TextWrapping.Wrap });
+                sp.Children.Add(new TextBlock { Text = "Pick a master password you'll remember - a few random words work well. It's never stored, and nobody can reset it for you. You'll also get an Emergency Kit to print: your Secret Key (for adding another PC) and a recovery code.", Foreground = Muted, TextWrapping = TextWrapping.Wrap });
                 sp.Children.Add(new TextBlock { Text = "Master password", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 14, 0, 6) });
                 var p1 = new PasswordBox { Style = St("Pwd") }; sp.Children.Add(p1);
                 var meter = new TextBlock { Foreground = Muted, Margin = new Thickness(0, 4, 0, 0), FontSize = 11.5 }; sp.Children.Add(meter);
@@ -167,6 +173,9 @@ namespace HallowKeys
                 var create = new Button { Content = "Create vault", Style = St("Accent"), IsDefault = true, Margin = new Thickness(0, 14, 0, 0), HorizontalAlignment = HorizontalAlignment.Left };
                 create.Click += (s, e) => CreateVault(p1, p2);
                 sp.Children.Add(create);
+                var join = new TextBlock { Margin = new Thickness(0, 14, 0, 0), Foreground = Muted, Cursor = Cursors.Hand, TextDecorations = TextDecorations.Underline, Text = "Already use Hallow Keys on another PC? Open a synced vault" };   // v2.0
+                join.MouseLeftButtonUp += (s, e) => ShowAddDevice();
+                sp.Children.Add(join);
             }
             sp.Children.Add(lockStatus);
             if (message != null) { lockStatus.Text = message; lockStatus.Foreground = Muted; }
@@ -192,11 +201,17 @@ namespace HallowKeys
             finally { if (p != IntPtr.Zero) Marshal.ZeroFreeGlobalAllocUnicode(p); ss.Dispose(); }
         }
         void Busy(string text) { lockStatus.Text = text; lockStatus.Foreground = Muted; }
-        void UnlockWith(PasswordBox pb)
+        void UnlockWith(PasswordBox pb, TextBox skTb)
         {
             if (pb.SecurePassword.Length == 0) return;
+            byte[] sk = null;
+            if (skTb != null)
+            {
+                string err; sk = SecretKey.Parse(skTb.Text, out err);
+                if (sk == null) { lockStatus.Text = err; lockStatus.Foreground = B("#F0BE5A"); return; }
+            }
             var pw = Bytes(pb); pb.Clear(); Busy("Unlocking...");
-            RunKdf(() => Vault.Open(KeysSettings.VaultPath, pw), pw);
+            RunKdf(() => { try { var v = OpenForUnlock(pw, sk); if (sk != null) SecretKey.Store(v.VaultId, sk); return v; } finally { Gcm.Wipe(sk); } }, pw);
         }
         void UnlockHello()
         {
@@ -230,8 +245,8 @@ namespace HallowKeys
             if (p1.Password.Length < 8) { lockStatus.Text = "Use at least 8 characters (longer is much better)."; lockStatus.Foreground = B("#F0BE5A"); return; }
             if (p1.Password != p2.Password) { lockStatus.Text = "The two passwords aren't the same."; lockStatus.Foreground = B("#F0BE5A"); return; }
             var pw = Bytes(p1); p1.Clear(); p2.Clear(); Busy("Creating your vault...");
-            string code = null;
-            RunKdf(() => { var v = Vault.Create(KeysSettings.VaultPath, pw, out code); v.Save(); return v; }, pw, () => ShowRecoverySheet(code, true));
+            string code = null, skText = null;
+            RunKdf(() => { byte[] sk; var v = Vault.Create(KeysSettings.VaultPath, pw, out code, out sk); try { SecretKey.Store(v.VaultId, sk); skText = SecretKey.Format(sk); } finally { Gcm.Wipe(sk); } v.Save(); return v; }, pw, () => { ShowEmergencyKit(code, skText, "new"); code = null; skText = null; });
         }
         // the key derivation takes a moment (600,000 rounds): off the window's thread
         void RunKdf(Func<Vault> work, byte[] wipe, Action after = null)
@@ -252,14 +267,14 @@ namespace HallowKeys
         }
         void Unlocked(Vault v)
         {
-            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17();
+            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17(); AfterUnlock20();
         }
         partial void OnUnlocked();
         partial void OnLocking();
         public void Lock(string why)
         {
             if (vault == null) return;
-            OnLocking();
+            OnLocking(); StopSync();
             SafeClip.ClearIfOurs();
             vault.Dispose(); vault = null; selected = null; editing = null; showHistory = false; lastSearch = "";
             ShowLock(why); WriteStatus();
@@ -282,7 +297,7 @@ namespace HallowKeys
             tray.MouseClick += (s, e) => { if (e.Button == WF.MouseButtons.Left) ShowFromTray(); };
         }
         public void ShowFromTray() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Activate(); }
-        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } StopHotkey(); StopDesktopFill(); OnQuit(); Application.Current.Shutdown(); }
+        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } StopHotkey(); StopDesktopFill(); StopSync(); OnQuit(); Application.Current.Shutdown(); }
         partial void OnQuit();
 
         // pipe commands: never any item data
@@ -324,7 +339,8 @@ namespace HallowKeys
         {
             var t = Crash.LastTime();
             return Family.Json(new Dictionary<string, object> { { "app", "Keys" }, { "version", Program.Version }, { "updated", Family.Time(DateTime.Now) }, { "running", true },
-                { "locked", vault == null }, { "items", vault == null ? (object)null : vault.Data.Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) } });
+                { "locked", vault == null }, { "items", vault == null ? (object)null : vault.Data.Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) },
+                { "sync", SyncStatus() } });   // v2.0: sync state only - never a path, key or item
         }
         public void WriteStatus() { if (!Snap.On) Family.WriteStatus(StatusJson()); }
 

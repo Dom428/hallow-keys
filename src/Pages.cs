@@ -112,7 +112,7 @@ namespace HallowKeys
             imp.Children.Add(ib); sp.Children.Add(Card(imp));
             var bk = new StackPanel();
             bk.Children.Add(new TextBlock { Text = "Encrypted backup", FontWeight = FontWeights.SemiBold, FontSize = 14 });
-            bk.Children.Add(new TextBlock { Text = "A copy of your whole vault, still encrypted with your master password (and your recovery code). Keep it on a USB stick or another drive. Restore adds its items to this vault.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 8) });
+            bk.Children.Add(new TextBlock { Text = "A copy of your whole vault, still encrypted: it opens with your master password and Secret Key, or with your recovery code. Keep it on a USB stick or another drive. Restore adds its items to this vault.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 8) });
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             var eb = new Button { Content = "Export backup", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; eb.Click += (s, e) => ExportBackup();
             var rb = new Button { Content = "Restore backup", Style = St("Btn") }; rb.Click += (s, e) => RestoreBackup();
@@ -144,7 +144,7 @@ namespace HallowKeys
         {
             var dlg = new Microsoft.Win32.SaveFileDialog { Title = "Save an encrypted backup", FileName = "Hallow Keys backup " + DateTime.Now.ToString("yyyy-MM-dd") + ".hkbackup", Filter = "Hallow Keys backup (*.hkbackup)|*.hkbackup" };
             if (dlg.ShowDialog(this) != true) return;
-            try { Vault.WriteAtomic(dlg.FileName, vault.Serialize(), false); Toast("Backup saved - it opens with your master password or recovery code."); }
+            try { Vault.WriteAtomic(dlg.FileName, vault.Serialize(), false); Toast("Backup saved - it opens with your master password (and Secret Key) or your recovery code."); }
             catch (Exception e) { Toast("Couldn't save the backup: " + e.Message, true); }
         }
         void RestoreBackup()
@@ -154,7 +154,16 @@ namespace HallowKeys
             var pw = Ask.Password(this, "Restore backup", "The master password the backup was made with (or the password you picked for an encrypted export):");
             if (pw == null) return;
             Vault b = null;
-            try { b = Vault.Open(dlg.FileName, pw); } catch (Exception e) { Toast(e.Message, true); return; } finally { Gcm.Wipe(pw); }
+            try { b = Vault.Open(dlg.FileName, pw); }
+            catch (SecretKeyNeededException)   // v2.0: a backup of a vault whose Secret Key this PC doesn't have
+            {
+                var t = Ask.Text(this, "Restore backup", "This backup needs its Secret Key (from the Emergency Kit of the vault it was made from):", "Secret Key"); string err; var sk = t == null ? null : SecretKey.Parse(t, out err);
+                if (sk == null) { Gcm.Wipe(pw); if (t != null) Toast("That isn't a valid Secret Key.", true); return; }
+                try { b = Vault.Open(dlg.FileName, pw, sk); } catch (Exception e) { Toast(e.Message, true); return; } finally { Gcm.Wipe(pw); Gcm.Wipe(sk); }
+            }
+            catch (Exception e) { Toast(e.Message, true); Gcm.Wipe(pw); return; }
+            finally { Gcm.Wipe(pw); }
+            foreach (var it in b.Data.Items) it.Sync = null;   // v2.0: restored items are new changes here
             var r = new Import.Result { Items = b.Data.Items, Folders = b.Data.Folders, Templates = b.Data.Templates };
             var added = Import.Merge(vault.Data, r); b.Dispose();
             SaveVault(added + " items restored from the backup."); ShowMain();
@@ -164,6 +173,7 @@ namespace HallowKeys
         UIElement SettingsPage()
         {
             ScrollViewer sv; var sp = Page("Settings", null, out sv);
+            SyncCard(sp);          // v2.0
             var lk = new StackPanel();
             lk.Children.Add(new TextBlock { Text = "Locking", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6) });
             var row = new StackPanel { Orientation = Orientation.Horizontal };
@@ -206,7 +216,8 @@ namespace HallowKeys
             {
                 if (MessageBox.Show(this, "Make a new recovery code? The old one stops working.", "Hallow Keys", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
                 IsEnabled = false; string code = null;
-                new System.Threading.Thread(() => { code = vault.NewRecoveryCode(); Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; SaveVault(null); ShowRecoverySheet(code, false); })); }) { IsBackground = true }.Start();
+                vaultBusy = true;
+                new System.Threading.Thread(() => { code = vault.NewRecoveryCode(); Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; vaultBusy = false; SaveVault(null); ShowRecoverySheet(code, false); })); }) { IsBackground = true }.Start();
             };
             mr.Children.Add(ch); mr.Children.Add(rs); mp.Children.Add(mr);
             sp.Children.Add(Card(mp));
@@ -222,7 +233,7 @@ namespace HallowKeys
             var upd = new Button { Content = "Check for updates", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; upd.Click += (s, e) => CheckForUpdate(true);
             var fold = new Button { Content = "Copy folder path", Style = St("Btn") }; fold.Click += (s, e) => { Clipboard.SetText(KeysSettings.Dir); Toast("Copied: " + KeysSettings.Dir); };
             ar.Children.Add(upd); ar.Children.Add(fold); ap.Children.Add(ar);
-            ap.Children.Add(new TextBlock { Text = "Your vault: " + KeysSettings.VaultPath + " (the previous save is next to it as .bak). Hallow Keys " + Program.Version + " - icons: Font Awesome Free (CC BY 4.0).", Foreground = Muted, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) });
+            ap.Children.Add(new TextBlock { Text = "Your vault on this PC: " + KeysSettings.VaultPath + " (the previous save is next to it as .bak, older versions in the versions folder)" + (S.SyncOn && S.SyncFolder.Length > 0 ? "; synced through " + SyncFolder.MainPath(S.SyncFolder) : "") + ". Hallow Keys " + Program.Version + " - icons: Font Awesome Free (CC BY 4.0).", Foreground = Muted, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) });
             sp.Children.Add(Card(ap));
             return sv;
         }
@@ -243,24 +254,37 @@ namespace HallowKeys
             if (!fromRecovery) { current = Ask.Password(this, "Change master password", "Your current master password:"); if (current == null) return; }
             var np = Ask.NewPassword(this, fromRecovery ? "Pick a new master password" : "Change master password");
             if (np == null) { Gcm.Wipe(current); if (fromRecovery) Toast("Keep your recovery sheet safe - you used it to unlock.", true); return; }
-            IsEnabled = false;
+            IsEnabled = false; vaultBusy = true;
             new System.Threading.Thread(() =>
             {
-                string err = null;
+                string err = null; byte[] fresh = null;
                 try
                 {
                     if (current != null) using (Vault.Open(KeysSettings.VaultPath, current)) { }   // checks the current password
-                    vault.ChangePassword(np);
+                    if (fromRecovery && vault.UsesSecretKey) fresh = vault.SetPasswordAfterRecovery(np);   // v2.0: keeps the Secret Key if it's here (or inside the vault), else a new one
+                    else vault.ChangePassword(np);
                     PhoneAfterPasswordChange(np);
                 }
                 catch (Exception e) { err = e.Message; }
                 finally { Gcm.Wipe(current); Gcm.Wipe(np); }
-                Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; if (err != null) Toast(err, true); else { WriteStatus(); AfterSave(); Toast("Master password changed."); } }));
+                Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    IsEnabled = true; vaultBusy = false;
+                    if (err != null) { Toast(err, true); return; }
+                    WriteStatus(); AfterSave(); saveSeq++; SyncSoon(500); Toast("Master password changed" + (S.SyncOn ? " - your other PCs take the change when they sync." : "."));
+                    if (fresh != null) { var t = SecretKey.Format(fresh); Gcm.Wipe(fresh); ShowEmergencyKit(null, t, "rotated"); }
+                }));
             }) { IsBackground = true }.Start();
         }
 
         // ---- the recovery sheet: shown once, printable
+        // v2.0: with a Secret Key this is the Emergency Kit (recovery code + Secret Key); a 1.x vault still gets the recovery sheet
         void ShowRecoverySheet(string code, bool first)
+        {
+            if (!Snap.On && vault != null && vault.UsesSecretKey) { var k = vault.CurrentSecretKey(); if (k != null) { var t = SecretKey.Format(k); Gcm.Wipe(k); ShowEmergencyKit(code, t, first ? "new" : "recovery"); return; } }
+            ShowRecoverySheetOld(code, first);
+        }
+        void ShowRecoverySheetOld(string code, bool first)
         {
             var w = new Window { Title = "Hallow Keys - recovery sheet", Width = 560, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = IsVisible ? this : null,
                 Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = FontFamily };

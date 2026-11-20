@@ -10,12 +10,13 @@
 | **1.3** | Password history (last 10 per login with dates, show / copy / clear); trash with 30-day restore (purged on unlock); tags (sidebar, editor, `#tag` search) and multi-word ranked search; duplicate finder (same site + username, card number, note, identity) that moves extras to the trash; encrypted export with its own password; plain CSV export in NordPass's layout behind a warning and the master password (formula-safe); global quick search shortcut (Ctrl+Shift+Space, rebindable, left off if taken); Ctrl+F; 2FA code fill from the extension (one-time-code boxes, split digit boxes, the key icon and a 2FA button in the popup); reuse warnings in the password box |
 | **1.4** | Quick search shortcut off by default (opt-in in Settings) so it never grabs a combination from games or other apps |
 | **1.7** | Watchtower-level health: one security score (0-100, formula on the page) and "Fix these first" with one-click actions (the site's /.well-known/change-password page, a new generated password in the editor, the site's 2FA instructions, switch to https); breached sites since the password was set (Have I Been Pwned's public breach list), 2FA available but not set up (2fa.directory's public TOTP list) - both downloaded whole on click or weekly if opted in (off by default), cached in the data folder and matched locally by registrable domain, nothing about your logins sent; unsecured http addresses (your own network's devices left alone); expired / expiring items; old passwords after a period you pick (1 year by default) |
+| **2.0** | Sync between your devices, no Hallow server: the vault in a folder you choose (OneDrive, Google Drive, Dropbox, NAS, Syncthing) with a local copy per PC; per-item version vectors, content hashes and tombstones, merged item by item (concurrent edits kept as a deterministic "conflict copy", edit beats delete); cloud clients' conflict files merged in; FileSystemWatcher + every minute, atomic temp-and-replace writes retried while the file is held, never written over a half-copied file; Secret Key (128-bit, DPAPI on each PC, HKDF-SHA256 with the Argon2id key) and Emergency Kit; Argon2id (RFC 9106, own C# code, RFC and reference vectors) for new vaults, 1.x PBKDF2 vaults offered the upgrade; open-a-synced-vault screen for a new PC; recovery code opens without the Secret Key; Restore an older version (30 encrypted snapshots); vault format 3 (1.7 refuses it, 1.7 file kept as .format2.bak); sync state in status.json |
 | **1.6** | Every kind of item: SSH keys (key type and SHA256 fingerprint from the key, RSA 3072 / 4096 made with CNG in OpenSSH format, Ed25519 paste-only), API credentials, software licences, bank accounts, passports, driving licences, Wi-Fi networks, servers / databases, memberships, crypto wallets (recovery phrase hidden, asks before showing or copying, never searched, phone copy and CSV only if you allow it); your own fields on any item (text, hidden, URL, date, 2FA with live codes, email, phone - add, rename, reorder, delete; hidden ones masked, never searched, with history); your own templates; several websites per login with the same strict matching; expiry dates with an Expiring view, a Password Health section and a reminder N days before (default 30, off switch, counts only); Duplicate; Bitwarden SSH keys, identity numbers and custom fields; vault format 2 (1.5 refuses it instead of dropping data; 1.6 upgrades format 1 and keeps unknown data) |
 | **1.5** | Autofill everywhere: cards (cc-* / names / labels, split number and expiry boxes, month and year lists; the security code only on a second click or an extension setting; any https page, never http) and addresses (names, email, phone, address lines, city, postcode, country lists) in the browser; inline suggestions under the focused box (closed shadow root, titles only until you pick, keyboard, Esc, off switch); two-step sign-ins (the pick remembered per tab for 5 minutes), sign-up / change-password forms offered for saving, the 2FA code filled on the next page (same tab and site, 2 minutes, once); desktop app autofill (opt-in, no shortcut until you pick one; Apps field on logins with a running-program picker; SendInput with KEYEVENTF_UNICODE; refuses when locked, unknown program, elevated, full screen or a game running); Firefox MV3 build and its native host registration; extension 1.5.0 |
 
 ## Road to NordPass / 1Password level
 
-Where Keys stands at 1.7 (1.5 added autofill everywhere, 1.6 every kind of item, 1.7 Watchtower-level health): a solid single-PC vault with browser autofill for logins, cards and addresses (Chrome, Edge, Brave, Firefox), desktop app autofill, Password Health, 2FA codes and a read-only phone copy. Already matched: password history, trash, tags, duplicate finder, exports, quick access shortcut, 2FA fill, inline suggestions, two-step sign-ins, strength meter and reuse warnings, leaked-password check.
+Where Keys stands at 2.0 (1.5 added autofill everywhere, 1.6 every kind of item, 1.7 Watchtower-level health, 2.0 sync between your PCs with a Secret Key and Argon2id): a solid vault that syncs between your PCs through your own cloud folder, with browser autofill for logins, cards and addresses (Chrome, Edge, Brave, Firefox), desktop app autofill, Password Health, 2FA codes and a read-only phone copy. Already matched: password history, trash, tags, duplicate finder, exports, quick access shortcut, 2FA fill, inline suggestions, two-step sign-ins, strength meter and reuse warnings, leaked-password check.
 
 What NordPass and 1Password still do better, and the plan to close it. Hallow Keys has no server and no accounts, so everything below either works on this PC or travels through things you already own (a cloud folder, Tailscale, Hallow Remote).
 
@@ -36,11 +37,12 @@ What NordPass and 1Password still do better, and the plan to close it. Hallow Ke
 - Done: breached sites: "this site was breached after you last changed this password" (Have I Been Pwned's free breach list, no key)
 - Done: unsecured (http) sites, expiring items and old passwords next to weak / reused / leaked, with one security score and the fixes in order
 
-### 2.0 - Sync between your devices (no Hallow server)
-- The vault in a folder you choose (OneDrive, Google Drive, Dropbox, a NAS, Syncthing); several PCs open the same vault
-- A per-item change log, so edits on two PCs merge instead of one winning; real conflicts kept as copies
-- **Secret Key** like 1Password's: a random 128-bit key on each device, mixed with the master password and printed on the Emergency Kit, so a stolen cloud copy can't be guessed offline
-- Argon2id for the master password (memory-hard, checked against RFC 9106 test vectors) alongside PBKDF2
+### 2.0 - Sync between your devices (no Hallow server) (done in 2.0)
+- Done: the vault in a folder you choose (OneDrive, Google Drive, Dropbox, a NAS, Syncthing); several PCs open the same vault
+- Done: a per-item change log (version vectors, tombstones), so edits on two PCs merge instead of one winning; real conflicts kept as copies; cloud clients' conflict files merged in
+- Done: **Secret Key** like 1Password's: a random 128-bit key on each device, mixed with the master password and printed on the Emergency Kit, so a stolen cloud copy can't be guessed offline
+- Done: Argon2id for the master password (memory-hard, checked against RFC 9106 and the reference implementation's test vectors) alongside PBKDF2
+- Done: Restore an older version (encrypted snapshots on each PC)
 
 ### 2.1 - Vaults and Travel Mode
 - Several vaults (Personal, Gaming, Work, Shared), moving items between them, export per vault
@@ -56,7 +58,7 @@ What NordPass and 1Password still do better, and the plan to close it. Hallow Ke
 - A family vault in a shared cloud folder: each person runs their own Keys, and items are encrypted to each member's public key (ECDH P-256 + AES-GCM)
 
 ### 2.4 - Emergency access
-- Emergency Kit (recovery code, Secret Key and how to restore) as a printable sheet
+- Done early (2.0): Emergency Kit (recovery code, Secret Key and how to restore) as a printable sheet
 - Trusted-contact package: an encrypted copy only your contact's Keys can open. NordPass's "release after a waiting period" needs a server, so that part isn't possible here
 
 ### 2.5 - Developer tools
@@ -79,6 +81,7 @@ What NordPass and 1Password still do better, and the plan to close it. Hallow Ke
 ## Next
 
 ### Still to check by hand
+- 2.0: sync through a real OneDrive / Google Drive / Dropbox / Syncthing folder between two real PCs (tested with two simulated PCs - separate data folders - and a temp "cloud" folder, including held files, half-written files and every cloud client's conflict-file naming), the folder pickers, printing the Emergency Kit, typing a Secret Key on a second PC, Upgrade protection on your real vault (tested on a real 1.7 vault made by the 1.7 code), and Argon2id's unlock time on a slower PC (about 0.5 s here)
 - 1.7: the real downloads from Have I Been Pwned and 2fa.directory inside the app (their real formats were checked once and the app was tested against a local stand-in), and the one-click actions opening real sites' change-password and 2FA pages
 - 1.6: the new editors with real typing and clicks (tested with `--snap` pictures and the code behind them), the "show the recovery phrase?" question, a real expiry reminder balloon (tested with the notification logged instead of shown), and the phone page in Hallow Remote showing the new types (the phone copy's contents are tested; Remote itself wasn't changed)
 - Desktop app autofill typing into a real Steam / Battle.net / Riot / Epic / EA / Ubisoft sign-in box with real key presses (the matching and every refusal are tested with a pretend program in front and a stand-in that only records what it would type; real SendInput was never run in the tests, so nothing could land in a game), and the chooser window

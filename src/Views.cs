@@ -28,8 +28,10 @@ namespace HallowKeys
             var top = new StackPanel { Margin = new Thickness(16, 16, 12, 0) };
             top.Children.Add(TitleRow(20));
             if (pending != null) { var ub = new Button { Content = "Update to v" + pending.Version.ToString(2), Style = St("Accent"), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left }; ub.Click += (s, e) => InstallUpdate(); top.Children.Add(ub); }
+            UpgradeOffer(top);   // v2.0: a 1.x vault is offered Argon2id + a Secret Key
             DockPanel.SetDock(top, Dock.Top); side.Children.Add(top);
             var bottom = new StackPanel { Margin = new Thickness(12, 0, 12, 14) };
+            bottom.Children.Add(SyncSidebar());   // v2.0: "Synced 2 min ago"
             var lockBtn = new Button { Content = "Lock now", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Stretch }; lockBtn.Click += (s, e) => Lock("Locked.");
             bottom.Children.Add(lockBtn);
             DockPanel.SetDock(bottom, Dock.Bottom); side.Children.Add(bottom);
@@ -130,7 +132,7 @@ namespace HallowKeys
         }
         void SaveVault(string msg)
         {
-            try { vault.Save(); WriteStatus(); AfterSave(); if (msg != null) Toast(msg); }
+            try { vault.Save(); saveSeq++; WriteStatus(); AfterSave(); if (msg != null) Toast(msg); if (S.SyncOn) SyncSoon(1500); }
             catch (Exception e) { Toast("Couldn't save the vault: " + e.Message, true); }
         }
         partial void AfterSaveImpl();

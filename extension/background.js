@@ -1,8 +1,13 @@
 // Hallow Keys extension - background. Talks to Hallow Keys on this PC through native messaging (com.hallow.keys).
-// Rules: fills only after a click (popup or the key icon), only into the page the login matches (checked here and again in the app),
-// only the top frame or frames with the same origin. Passwords waiting to be saved stay in memory (storage.session) until you decide.
+// Rules: fills only after you pick something (suggestions, key icon, popup), only into the page the login matches (checked here and
+// again in the app), only the top frame or frames with the same origin. Cards and addresses only on https pages. Passwords waiting
+// to be saved stay in memory (storage.session) until you decide.
+// v1.5: cards and addresses; two-step sign-ins (the login you picked on the username page is offered first on the password page
+// for 5 minutes, in that tab); the 2FA code filled on the next page after a password fill (same site, same tab, within 2 minutes,
+// once); sign-up forms offered for saving.
 'use strict';
 const HOST = 'com.hallow.keys';
+const REMEMBER_MS = 5 * 60 * 1000, TOTP_NEXT_MS = 2 * 60 * 1000;
 
 function ask(msg) {
   return new Promise(resolve => {
@@ -15,67 +20,139 @@ function ask(msg) {
   });
 }
 function originOf(u) { try { const x = new URL(u); return (x.protocol === 'https:' || x.protocol === 'http:') ? x.origin : null; } catch (e) { return null; } }
+function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
+// "accounts.example.co.uk" -> "example.co.uk" (a hint for the UI only - the app checks sites with its own, stricter rules)
+const MULTI = new Set(['co.uk', 'org.uk', 'ac.uk', 'gov.uk', 'com.au', 'net.au', 'org.au', 'co.nz', 'co.jp', 'co.kr', 'com.br', 'com.mx', 'co.in', 'co.za', 'com.cn', 'com.tr', 'github.io']);
+function siteOf(u) { try { const h = new URL(u).hostname; const p = h.split('.'); if (p.length <= 2) return h; const two = p.slice(-2).join('.'); return MULTI.has(two) && p.length >= 3 ? p.slice(-3).join('.') : two; } catch (e) { return null; } }
+const store = {
+  async get(k) { const s = await chrome.storage.session.get(k); return s[k]; },
+  set(k, v) { return chrome.storage.session.set({ [k]: v }); },
+  remove(k) { return chrome.storage.session.remove(k); }
+};
+function to(tabId, msg, frameId) { return Promise.resolve(chrome.tabs.sendMessage(tabId, msg, frameId === undefined ? undefined : { frameId: frameId })).catch(() => null); }
 
 // fill: ask the app for this login on this tab's page, then hand it to the frames whose origin is the top page's origin
-async function fill(tab, id) {
+async function fill(tab, id, frameId) {
   const url = tab && tab.url; const origin = originOf(url);
   if (!origin) return { ok: false, msg: 'Not a web page' };
   const r = await ask({ type: 'fill', id: id, url: url });
   if (!r.ok) return r;
-  let done = 0;
-  try {
-    const res = await chrome.tabs.sendMessage(tab.id, { type: 'hk-fill', origin: origin, username: r.username, password: r.password, totp: r.totp });
-    done = res && res.filled ? res.filled : 0;
-  } catch (e) { }
-  r.password = null; r.username = null;
+  const res = await to(tab.id, { type: 'hk-fill', origin: origin, username: r.username, password: r.password, totp: r.totp }, frameId);
+  const done = res && res.filled ? res.filled : 0;
+  const hadTotp = !!r.totp; r.password = null; r.username = null; r.totp = null;
+  if (done > 0) {
+    await store.set('remember-' + tab.id, { id: id, site: siteOf(url), until: Date.now() + REMEMBER_MS });   // two-step sign-ins
+    if (hadTotp && !(res && res.totp)) await store.set('totpnext-' + tab.id, { id: id, url: url, until: Date.now() + TOTP_NEXT_MS });
+    else await store.remove('totpnext-' + tab.id);
+  }
   return { ok: done > 0, msg: done > 0 ? 'Filled' : 'No login form found on this page' };
 }
 
-// v1.3: just the 2FA code of one login, into the page's 2FA box (same checks as a fill)
-async function fillTotp(tab, id) {
+// v1.3: just the 2FA code of one login, into the page's 2FA box (same checks as a fill). sameSiteAs: v1.5's code after a password fill
+async function fillTotp(tab, id, frameId, sameSiteAs) {
   const url = tab && tab.url; const origin = originOf(url);
   if (!origin) return { ok: false, msg: 'Not a web page' };
-  const r = await ask({ type: 'totp', id: id, url: url });
+  const q = { type: 'totp', id: id, url: url }; if (sameSiteAs) q.sameSiteAs = sameSiteAs;
+  const r = await ask(q);
   if (!r.ok) return r;
-  let done = 0;
-  try { const res = await chrome.tabs.sendMessage(tab.id, { type: 'hk-fill-totp', origin: origin, totp: r.totp }); done = res && res.filled ? res.filled : 0; } catch (e) { }
+  const res = await to(tab.id, { type: 'hk-fill-totp', origin: origin, totp: r.totp }, frameId);
+  const done = res && res.filled ? res.filled : 0;
   r.totp = null;
   return { ok: done > 0, msg: done > 0 ? 'Filled the 2FA code' : 'No 2FA code box found on this page' };
 }
 
-chrome.runtime.onMessage.addListener((msg, sender, send) => {
-  (async () => {
-    if (msg.type === 'popup-status') { send(await ask({ type: 'status' })); return; }
-    if (msg.type === 'popup-match') { send(await ask({ type: 'match', url: msg.url })); return; }
-    if (msg.type === 'popup-open') { send(await ask({ type: 'open' })); return; }
-    if (msg.type === 'popup-fill') { const tab = await chrome.tabs.get(msg.tabId); send(await fill(tab, msg.id)); return; }
-    if (msg.type === 'popup-totp') { const tab = await chrome.tabs.get(msg.tabId); send(await fillTotp(tab, msg.id)); return; }
-    if (msg.type === 'popup-pending') { const k = 'pending-' + msg.tabId; const s = await chrome.storage.session.get(k); send(s[k] ? { host: s[k].host, username: s[k].username, state: s[k].state } : null); return; }
+// v1.5: a card (any https page - cards aren't tied to a site). The security code only on the second click (cvc) or with the setting on
+async function fillCard(tab, id, frameId, cvcClick) {
+  const url = tab && tab.url; const origin = originOf(url);
+  if (!origin || !isHttps(url)) return { ok: false, msg: 'Cards are only filled on secure (https) pages' };
+  const s = await chrome.storage.local.get({ cvcWithCard: false });
+  const r = await ask({ type: 'card', id: id, url: url, cvc: !!(cvcClick || s.cvcWithCard) });
+  if (!r.ok) return r;
+  const card = { holder: r.holder, number: r.number, expMonth: r.expMonth, expYear: r.expYear, cvc: r.cvc || null };
+  const res = await to(tab.id, { type: 'hk-fill-card', origin: origin, card: card, onlyCvc: !!cvcClick }, frameId);
+  card.number = null; card.cvc = null; r.number = null; r.cvc = null;
+  const done = res && res.filled ? res.filled : 0;
+  return { ok: done > 0, needCvc: !!(res && res.needCvc && r.hasCvc), msg: done > 0 ? (cvcClick ? 'Filled the security code' : 'Filled the card') : 'No card form found on this page' };
+}
+async function fillIdentity(tab, id, frameId) {
+  const url = tab && tab.url; const origin = originOf(url);
+  if (!origin || !isHttps(url)) return { ok: false, msg: 'Addresses are only filled on secure (https) pages' };
+  const r = await ask({ type: 'identity', id: id, url: url });
+  if (!r.ok) return r;
+  const res = await to(tab.id, { type: 'hk-fill-identity', origin: origin, identity: r }, frameId);
+  const done = res && res.filled ? res.filled : 0;
+  return { ok: done > 0, msg: done > 0 ? 'Filled the address' : 'No address form found on this page' };
+}
+// logins for a page, with the one picked on the username page first (two-step sign-ins)
+async function match(tab, kind) {
+  const r = await ask({ type: 'match', url: tab.url, kind: kind || 'login' });
+  if (r && r.ok && (kind || 'login') === 'login') {
+    const m = await store.get('remember-' + tab.id);
+    if (m && m.until > Date.now() && m.site === siteOf(tab.url) && r.items.some(i => i.id === m.id)) r.remembered = m.id;
+  }
+  return r;
+}
+
+async function handle(msg, sender) {
+  if (!msg || typeof msg.type !== 'string' || sender.id !== chrome.runtime.id) return null;
+  if (msg.type === 'popup-open') return await ask({ type: 'open' });
+  if (msg.type.startsWith('popup-')) {
+    if (sender.tab) return null;   // only the popup (an extension page), never a web page
+    if (msg.type === 'popup-status') return await ask({ type: 'status' });
+    const tab = msg.tabId !== undefined ? await chrome.tabs.get(msg.tabId) : null;
+    if (!tab) return { ok: false };
+    if (msg.type === 'popup-match') return await match(tab, msg.kind);
+    if (msg.type === 'popup-fill') return await fill(tab, msg.id);
+    if (msg.type === 'popup-totp') return await fillTotp(tab, msg.id);
+    if (msg.type === 'popup-card') return await fillCard(tab, msg.id, undefined, !!msg.cvc);
+    if (msg.type === 'popup-identity') return await fillIdentity(tab, msg.id);
+    if (msg.type === 'popup-pending') { const p = await store.get('pending-' + tab.id); return p ? { host: p.host, username: p.username, state: p.state, signup: !!p.signup } : null; }
     if (msg.type === 'popup-save') {
-      const k = 'pending-' + msg.tabId; const s = await chrome.storage.session.get(k); const p = s[k];
-      await chrome.storage.session.remove(k); chrome.action.setBadgeText({ tabId: msg.tabId, text: '' });
-      if (!p || !msg.save) { send({ ok: true }); return; }
-      send(await ask({ type: 'save', url: p.url, username: p.username, password: p.password })); return;
+      const k = 'pending-' + tab.id; const p = await store.get(k);
+      await store.remove(k); chrome.action.setBadgeText({ tabId: tab.id, text: '' });
+      if (!p || !msg.save) return { ok: true };
+      return await ask({ type: 'save', url: p.url, username: p.username, password: p.password });
     }
-    // from the content script in a page
-    if (!sender.tab) { send(null); return; }
-    const top = originOf(sender.tab.url), here = originOf(sender.url);
-    if (!top || here !== top) { send(null); return; }   // cross-origin frames get nothing
-    if (msg.type === 'inline-match') { send(await ask({ type: 'match', url: sender.tab.url })); return; }
-    if (msg.type === 'inline-fill') { send(await fill(sender.tab, msg.id)); return; }
-    if (msg.type === 'inline-totp') { send(await fillTotp(sender.tab, msg.id)); return; }
-    if (msg.type === 'submitted') {
-      // a login form was sent: offer to save it (the popup asks you; nothing is saved without your OK)
-      const c = await ask({ type: 'save-check', url: sender.tab.url, username: msg.username, password: msg.password });
+    return null;
+  }
+  // from the content script in a page
+  if (!sender.tab) return null;
+  const top = originOf(sender.tab.url), here = originOf(sender.url);
+  if (!top || here !== top) return null;   // cross-origin frames get nothing
+  const tab = sender.tab, frame = sender.frameId;
+  switch (msg.type) {
+    case 'inline-match': return await match(tab, msg.kind);
+    case 'inline-fill': return await fill(tab, msg.id, frame);
+    case 'inline-totp': return await fillTotp(tab, msg.id, frame);
+    case 'inline-card': return await fillCard(tab, msg.id, frame, !!msg.cvc);
+    case 'inline-identity': return await fillIdentity(tab, msg.id, frame);
+    case 'otp-ready': {
+      // a 2FA box appeared: right after a password fill with a 2FA key, on the same site, in this tab - fill the code once
+      const k = 'totpnext-' + tab.id; const p = await store.get(k);
+      if (!p || p.until < Date.now()) { if (p) await store.remove(k); return null; }
+      if (siteOf(p.url) !== siteOf(tab.url)) return null;
+      const r = await fillTotp(tab, p.id, frame, p.url);
+      if (r.ok) await store.remove(k);
+      return { ok: r.ok };
+    }
+    case 'username-step':
+      if (typeof msg.username === 'string' && msg.username.length <= 500) await store.set('step-' + tab.id, { username: msg.username, site: siteOf(tab.url), until: Date.now() + REMEMBER_MS });
+      return null;
+    case 'submitted': {
+      // a login or sign-up form was sent: offer to save it (the popup asks you; nothing is saved without your OK)
+      let user = typeof msg.username === 'string' ? msg.username : '';
+      if (!user) { const st = await store.get('step-' + tab.id); if (st && st.until > Date.now() && st.site === siteOf(tab.url)) user = st.username; }
+      const c = await ask({ type: 'save-check', url: tab.url, username: user, password: msg.password });
       if (c.ok && (c.state === 'new' || c.state === 'update')) {
-        await chrome.storage.session.set({ ['pending-' + sender.tab.id]: { url: sender.tab.url, host: new URL(sender.tab.url).host, username: msg.username, password: msg.password, state: c.state } });
-        chrome.action.setBadgeText({ tabId: sender.tab.id, text: '1' }); chrome.action.setBadgeBackgroundColor({ color: '#F07820' });
+        await store.set('pending-' + tab.id, { url: tab.url, host: new URL(tab.url).host, username: user, password: msg.password, state: c.state, signup: !!msg.signup });
+        chrome.action.setBadgeText({ tabId: tab.id, text: '1' }); chrome.action.setBadgeBackgroundColor({ color: '#F07820' });
       }
-      send(null); return;
+      return null;
     }
-    send(null);
-  })();
-  return true;
-});
-chrome.tabs.onRemoved.addListener(id => chrome.storage.session.remove('pending-' + id));
+  }
+  return null;
+}
+chrome.runtime.onMessage.addListener((msg, sender, send) => { handle(msg, sender).then(send, () => send(null)); return true; });
+chrome.tabs.onRemoved.addListener(id => { for (const k of ['pending-', 'remember-', 'totpnext-', 'step-']) chrome.storage.session.remove(k + id); });
 chrome.storage.session.setAccessLevel && chrome.storage.session.setAccessLevel({ accessLevel: 'TRUSTED_CONTEXTS' });
+if (typeof globalThis !== 'undefined' && globalThis.__hallowKeysBgTest) globalThis.__hallowKeysBgTest({ handle, siteOf, fill, fillCard, match });

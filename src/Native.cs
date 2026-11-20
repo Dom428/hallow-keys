@@ -4,6 +4,9 @@
 //    running, unlocked app over its own pipe, with a per-session secret the app writes for this Windows user.
 //  - The app answers: status, match (titles and usernames of logins for a page - no passwords), fill (one login, only if it
 //    matches the page), totp (v1.3: just the 2FA code of one matching login), save-check / save (after the user confirms in the extension), open.
+//  - v1.5: match with kind "card" / "identity" (titles, the card's last 4 digits, names - https pages only), card (one card's details,
+//    the security code only when asked for), identity (one address), totp with "sameSiteAs" (the 2FA code right after a password fill,
+//    only on the same site). Firefox starts the host as "HallowKeys.exe <manifest path> <add-on ID>" and only the pinned ID is answered.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -24,6 +27,7 @@ namespace HallowKeys
         public const string ExtensionId = "nakjoajpklglfbaallnjofphmnhbedfo";
         public const string HostName = "com.hallow.keys";
         public static string Origin { get { return "chrome-extension://" + ExtensionId + "/"; } }
+        public const string FirefoxId = "hallow-keys@dom428.github.io";   // v1.5: the Firefox add-on's ID (browser_specific_settings.gecko.id)
         public static string PipeName { get { return "HallowKeys.Native." + Environment.UserName + (KeysSettings.TestDir != null ? ".test" : ""); } }
         public static string SecretFile { get { return Path.Combine(KeysSettings.Dir, "session.key"); } }
         static readonly JavaScriptSerializer js = new JavaScriptSerializer { MaxJsonLength = 8 * 1024 * 1024 };
@@ -31,8 +35,7 @@ namespace HallowKeys
         // ---- the host process (started by the browser): stdin/stdout, 4-byte length + UTF-8 JSON
         public static int Run(string[] args)
         {
-            var origin = args.FirstOrDefault(a => a.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase));
-            if (origin == null || !string.Equals(origin.TrimEnd('/') + "/", Origin, StringComparison.Ordinal)) return 1;   // only the pinned extension
+            if (!Allowed(args)) return 1;   // only the pinned extension
             var stdin = Console.OpenStandardInput(); var stdout = Console.OpenStandardOutput();
             while (true)
             {
@@ -44,6 +47,14 @@ namespace HallowKeys
                 finally { Array.Clear(buf, 0, buf.Length); }
                 var o = Encoding.UTF8.GetBytes(reply); stdout.Write(BitConverter.GetBytes(o.Length), 0, 4); stdout.Write(o, 0, o.Length); stdout.Flush(); Array.Clear(o, 0, o.Length);
             }
+        }
+        // Chrome / Edge / Brave pass "chrome-extension://<id>/"; Firefox passes the manifest path, then the add-on ID
+        public static bool Allowed(string[] args)
+        {
+            var origin = args.FirstOrDefault(a => a.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase));
+            if (origin != null) return string.Equals(origin.TrimEnd('/') + "/", Origin, StringComparison.Ordinal);
+            var other = args.Where(a => !a.StartsWith("--") && !a.EndsWith(".json", StringComparison.OrdinalIgnoreCase)).ToList();
+            return other.Count == 1 && string.Equals(other[0], FirefoxId, StringComparison.Ordinal);
         }
         static int ReadAll(Stream s, byte[] b) { int got = 0; while (got < b.Length) { int r = s.Read(b, got, b.Length - got); if (r <= 0) break; got += r; } return got; }
         static string Forward(string json)
@@ -77,9 +88,22 @@ namespace HallowKeys
             var m = js.Serialize(new Dictionary<string, object> { { "name", HostName }, { "description", "Hallow Keys" }, { "path", exePath }, { "type", "stdio" }, { "allowed_origins", new[] { Origin } } });
             File.WriteAllText(ManifestPath, m, new UTF8Encoding(false));
             foreach (var b in Browsers) using (var k = Registry.CurrentUser.CreateSubKey(RegRoot(b[1]))) k.SetValue("", ManifestPath);
+            // v1.5 Firefox: its own manifest with allowed_extensions (add-on IDs instead of origins)
+            var fm = js.Serialize(new Dictionary<string, object> { { "name", HostName }, { "description", "Hallow Keys" }, { "path", exePath }, { "type", "stdio" }, { "allowed_extensions", new[] { FirefoxId } } });
+            File.WriteAllText(FirefoxManifestPath, fm, new UTF8Encoding(false));
+            using (var k = Registry.CurrentUser.CreateSubKey(RegRoot(FirefoxRoot))) k.SetValue("", FirefoxManifestPath);
         }
-        public static void Unregister() { foreach (var b in Browsers) try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(b[1]), false); } catch { } try { File.Delete(ManifestPath); } catch { } }
+        public static void Unregister()
+        {
+            foreach (var b in Browsers) try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(b[1]), false); } catch { }
+            try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(FirefoxRoot), false); } catch { }
+            try { File.Delete(ManifestPath); } catch { }
+            try { File.Delete(FirefoxManifestPath); } catch { }
+        }
         public static bool Registered { get { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(Browsers[0][1]))) return k != null && File.Exists(ManifestPath); } }
+        public static bool FirefoxRegistered { get { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(FirefoxRoot))) return k != null && File.Exists(FirefoxManifestPath); } }
+        public const string FirefoxRoot = @"Software\Mozilla";   // HKCU\Software\Mozilla\NativeMessagingHosts\com.hallow.keys
+        public static string FirefoxManifestPath { get { return Path.Combine(KeysSettings.Dir, "native-host-firefox.json"); } }
     }
 
     // ---- the app's side: a pipe for the host only, checked with the session secret
@@ -141,6 +165,7 @@ namespace HallowKeys
             int d = 0; for (int i = 0; i < mine.Length; i++) d |= char.ToUpperInvariant(hex[i]) ^ mine[i]; return d == 0;
         }
         static string S(Dictionary<string, object> m, string k) { object o; return m.TryGetValue(k, out o) && o != null ? o.ToString() : ""; }
+        static bool B(Dictionary<string, object> m, string k) { object o; return m.TryGetValue(k, out o) && o is bool && (bool)o; }
         string Json(object o) { return js.Serialize(o); }
 
         // runs on the window's thread
@@ -155,6 +180,32 @@ namespace HallowKeys
             if (Domain.Parse(url) == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not a web page" } });
             var host = Domain.HostOf(url);
             Func<Item, bool> matches = i => i.Type == "login" && i.Urls.Any(u => Domain.Matches(u, url));
+            var kind = S(m, "kind");
+            // v1.5: cards and addresses aren't tied to a site, so they're offered on any https page - never on http
+            if ((type == "match" && (kind == "card" || kind == "identity")) || type == "card" || type == "identity")
+            {
+                if (!FormData.IsHttps(url)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Cards and addresses are only filled on secure (https) pages" } });
+                if (type == "match")
+                {
+                    var found = v.Data.Items.Where(i => i.Type == kind).OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase).Take(30)
+                        .Select(i => (object)(kind == "card"
+                            ? new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", FormData.Brand(i.CardNumber) + " •••• " + FormData.Last4(i.CardNumber) }, { "cvc", i.Cvc.Length > 0 } }
+                            : new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", string.Join(" - ", new[] { i.FullName, i.Email }.Where(x => x.Length > 0)) } })).ToList();
+                    return Json(new Dictionary<string, object> { { "ok", true }, { "items", found } });
+                }
+                var it = v.Data.Items.FirstOrDefault(i => i.Id == S(m, "id") && i.Type == type);
+                if (it == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not found" } });
+                if (type == "card")
+                {
+                    string mon, yr; FormData.ParseExpiry(it.Expiry, out mon, out yr);
+                    var o = new Dictionary<string, object> { { "ok", true }, { "holder", it.CardHolder }, { "number", FormData.Digits(it.CardNumber) }, { "expMonth", mon ?? "" }, { "expYear", yr ?? "" }, { "hasCvc", it.Cvc.Length > 0 } };
+                    if (B(m, "cvc")) o["cvc"] = it.Cvc;   // the security code only when the extension asks for it (a second click, or its setting)
+                    return Json(o);
+                }
+                string given, family, a1, a2; FormData.SplitName(it.FullName, out given, out family); FormData.SplitAddress(it.Address, out a1, out a2);
+                return Json(new Dictionary<string, object> { { "ok", true }, { "name", it.FullName }, { "given", given }, { "family", family }, { "email", it.Email }, { "tel", it.Phone },
+                    { "address", it.Address.Replace("\r", "") }, { "address1", a1 }, { "address2", a2 }, { "city", it.City }, { "postcode", it.PostCode }, { "country", it.Country } });
+            }
             switch (type)
             {
                 case "match":
@@ -174,6 +225,9 @@ namespace HallowKeys
                     if (it == null || !matches(it)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login isn't for this site" } });
                     var spec = Totp.Parse(it.Totp);
                     if (spec == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login has no 2FA code" } });
+                    var prev = S(m, "sameSiteAs");   // v1.5: the code right after a password fill - only on the same site as that page
+                    if (prev.Length > 0 && (Domain.Parse(prev) == null || Domain.Registrable(Domain.HostOf(prev)) != Domain.Registrable(host) || (Domain.Parse(prev).Scheme == "https" && Domain.Parse(url).Scheme != "https")))
+                        return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not the same site" } });
                     var now = Totp.Now();
                     return Json(new Dictionary<string, object> { { "ok", true }, { "totp", Totp.Code(spec, now) }, { "left", spec.Period - now % spec.Period } });
                 }

@@ -175,6 +175,7 @@ namespace HallowKeys
             lk.Children.Add(new TextBlock { Text = "It also locks when Windows locks or the PC sleeps, and copied passwords leave the clipboard after " + SafeClip.ClearSeconds + " seconds (they never go into Windows' clipboard history).", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) });
             sp.Children.Add(Card(lk));
             HotkeyCard(sp);
+            DesktopFillCard(sp);   // v1.5
             // Windows Hello
             var wh = new StackPanel();
             wh.Children.Add(new TextBlock { Text = "Windows Hello", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 4) });

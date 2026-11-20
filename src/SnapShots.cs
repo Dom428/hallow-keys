@@ -12,7 +12,7 @@ namespace HallowKeys
         {
             var d = new VaultData();
             d.Folders.AddRange(new[] { "Games", "Work" });
-            d.Items.Add(new Item { Title = "Steam", Type = "login", Username = "player.one@example.com", Password = "correct-Horse-battery-7", Urls = { "https://store.steampowered.com" }, Folder = "Games", Favorite = true, Totp = "otpauth://totp/Steam:player?secret=JBSWY3DPEHPK3PXP" });
+            d.Items.Add(new Item { Title = "Steam", Type = "login", Username = "player.one@example.com", Password = "correct-Horse-battery-7", Urls = { "https://store.steampowered.com" }, Folder = "Games", Favorite = true, Totp = "otpauth://totp/Steam:player?secret=JBSWY3DPEHPK3PXP", Apps = { "steam.exe" } });
             d.Items.Add(new Item { Title = "Example Mail", Type = "login", Username = "me@example.com", Password = "hunter2", Urls = { "https://mail.example.com" }, PasswordChanged = DateTime.Now.AddDays(-500) });
             d.Items.Add(new Item { Title = "Example Shop", Type = "login", Username = "me@example.com", Password = "hunter2", Urls = { "https://shop.example.net" } });
             d.Items.Add(new Item { Title = "Battle.net", Type = "login", Username = "playerone", Password = "Zq8!vL2#nW5@rT9x", Urls = { "https://battle.net" }, Folder = "Games" });

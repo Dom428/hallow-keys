@@ -43,10 +43,11 @@ namespace HallowKeys
         [DataMember] public List<string> OldPasswordDates = new List<string>();   // v1.3: when each old password was replaced (ISO time, same order; "" = not known)
         [DataMember] public List<string> Tags = new List<string>();               // v1.3
         [DataMember] public DateTime? Deleted;                                   // v1.3: when it went to the trash (null = not in the trash)
+        [DataMember] public List<string> Apps = new List<string>();              // v1.5: desktop programs this login types into (exe names, e.g. steam.exe)
         [OnDeserialized] void Fix(StreamingContext c)
         {
             if (Urls == null) Urls = new List<string>(); if (Files == null) Files = new List<Attachment>(); if (OldPasswords == null) OldPasswords = new List<string>();
-            if (OldPasswordDates == null) OldPasswordDates = new List<string>(); if (Tags == null) Tags = new List<string>();
+            if (OldPasswordDates == null) OldPasswordDates = new List<string>(); if (Tags == null) Tags = new List<string>(); if (Apps == null) Apps = new List<string>();
             foreach (var f in new[] { "Username", "Password", "Totp", "CardHolder", "CardNumber", "Expiry", "Cvc", "Pin", "FullName", "Email", "Phone", "Address", "City", "PostCode", "Country", "Notes", "Title", "Folder", "Type" })
             { var p = GetType().GetField(f); if (p.GetValue(this) == null) p.SetValue(this, f == "Type" ? "login" : ""); }
         }

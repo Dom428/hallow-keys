@@ -219,6 +219,7 @@ namespace HallowKeys
                 var spec = Totp.Parse(it.Totp);
                 if (spec != null) TotpRow(sp, spec);
                 foreach (var u in it.Urls) UrlRow(sp, u);
+                AppsRow(sp, it);   // v1.5
                 HistorySection(sp, it);
             }
             else if (it.Type == "card")
@@ -303,7 +304,7 @@ namespace HallowKeys
             editing = new Item { Id = it.Id, Type = it.Type, Title = it.Title, Folder = it.Folder, Favorite = it.Favorite, Created = it.Created, Updated = it.Updated, PasswordChanged = it.PasswordChanged,
                 Username = it.Username, Password = it.Password, Totp = it.Totp, Urls = it.Urls.ToList(), CardHolder = it.CardHolder, CardNumber = it.CardNumber, Expiry = it.Expiry, Cvc = it.Cvc, Pin = it.Pin,
                 FullName = it.FullName, Email = it.Email, Phone = it.Phone, Address = it.Address, City = it.City, PostCode = it.PostCode, Country = it.Country, Notes = it.Notes, Files = it.Files.ToList(), OldPasswords = it.OldPasswords.ToList(),
-                OldPasswordDates = it.OldPasswordDates.ToList(), Tags = it.Tags.ToList() };
+                OldPasswordDates = it.OldPasswordDates.ToList(), Tags = it.Tags.ToList(), Apps = it.Apps.ToList() };
             if (detail == null) { view = it.Type; ShowMain(); }
             detail.Child = Editor(editing);
         }
@@ -346,6 +347,7 @@ namespace HallowKeys
                 var urls = text("Website addresses (one per line)", string.Join("\n", e.Urls), v => e.Urls = v.Split('\n').Select(x => x.Trim()).Where(x => x.Length > 0).ToList());
                 urls.AcceptsReturn = true; urls.Style = St("Area");
                 text("2FA (an otpauth:// link or the setup key)", e.Totp, v => e.Totp = v);
+                AppsEditor(sp, e, fields);   // v1.5
             }
             else if (e.Type == "card")
             {

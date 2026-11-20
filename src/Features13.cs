@@ -163,11 +163,13 @@ namespace HallowKeys
     {
         [DllImport("user32.dll", SetLastError = true)] static extern bool RegisterHotKey(IntPtr h, int id, uint mods, uint vk);
         [DllImport("user32.dll")] static extern bool UnregisterHotKey(IntPtr h, int id);
-        const int WM_HOTKEY = 0x0312, HotId = 0x4B59;
+        const int WM_HOTKEY = 0x0312; readonly int HotId = 0x4B59;
         const uint MOD_ALT = 1, MOD_CONTROL = 2, MOD_SHIFT = 4, MOD_WIN = 8, MOD_NOREPEAT = 0x4000;
         public static string Caption { get { return "HallowKeysQuickSearch" + (KeysSettings.TestDir != null ? "Test" : ""); } }
         readonly Action fired; public string Active;   // the combination registered now, or null
         public GlobalHotkey(Action fired) { this.fired = fired; CreateHandle(new WF.CreateParams { Caption = Caption, Parent = new IntPtr(-3) }); }   // HWND_MESSAGE
+        // v1.5: a second shortcut (desktop app autofill) with its own window name and id
+        public GlobalHotkey(Action fired, string caption, int id) { this.fired = fired; HotId = id; CreateHandle(new WF.CreateParams { Caption = caption + (KeysSettings.TestDir != null ? "Test" : ""), Parent = new IntPtr(-3) }); }
         public bool Set(string combo)
         {
             Clear(); uint m, vk; if (!Parse(combo, out m, out vk)) return false;

@@ -9,6 +9,14 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.5 - AUTOFILL EVERYWHERE
+- Cards and addresses fill in the browser on https pages (a card's security code only after a second click).
+- Suggestions show under the box you click into; two-step sign-ins; sign-ups offered for saving; 2FA codes fill on the next page.
+- Desktop app autofill (off by default): a shortcut you pick types a login into Steam, Battle.net, Riot Client, Epic, EA app,
+  Ubisoft Connect or any program you add under Apps on a login - never into games.
+- Firefox: the extension-firefox folder (see FIREFOX below).
+- Reload the extension once on your browser's extensions page (it's now 1.5.0).
+
 WHAT'S NEW IN 1.4
 - The quick search shortcut is off by default now - turn it on in Settings if you want it.
 
@@ -37,8 +45,16 @@ WHAT IT DOES
 - A read-only copy on your phone through Hallow Remote (Settings > Phone copy; needs Remote's HTTPS)
 - Import from NordPass (Settings > Export items gives a CSV), other CSV exports and Bitwarden JSON
 - Encrypted backups and exports, a plain CSV export (with a warning), a recovery sheet, auto-lock and a clipboard that clears itself
-- Browser autofill for Chrome, Edge and Brave: see the Browser page in Hallow Keys (the extension is in the
-  extension folder next to HallowKeys.exe; you load it with Developer mode > Load unpacked)
+- Browser autofill for Chrome, Edge, Brave and Firefox - logins, 2FA codes, cards and addresses: see the Browser page in
+  Hallow Keys (the extension is in the extension folder next to HallowKeys.exe; you load it with Developer mode > Load unpacked)
+- Desktop app autofill (off by default): Settings > Desktop app autofill, then add programs under Apps on a login
+
+FIREFOX
+Click Connect browsers in Hallow Keys first. To try the add-on: about:debugging > This Firefox > Load Temporary Add-on >
+extension-firefox\manifest.json (it lasts until Firefox closes). To keep it, Firefox needs it signed by Mozilla - free, once,
+with your own account: addons.mozilla.org/developers > Submit a New Add-on > On your own (unlisted) > upload a zip of the
+CONTENTS of extension-firefox > download the signed .xpi > drag it into Firefox. Then about:addons > Hallow Keys > Permissions
+> allow it on all websites.
 
 YOUR VAULT
 %APPDATA%\HallowKeys\vault.hkvault (the previous save is next to it as .bak). Uninstalling never

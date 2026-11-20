@@ -30,13 +30,13 @@ namespace HallowKeys
 
         UIElement BrowserPage()
         {
-            ScrollViewer sv; var sp = Page("Browser autofill", "Fill logins in Chrome, Edge and Brave with one click. Hallow Keys fills only when you click the extension or the key icon in a password box - never by itself, never into hidden boxes, and only on the site a login was saved for.", out sv);
+            ScrollViewer sv; var sp = Page("Browser autofill", "Fill logins, cards and addresses in Chrome, Edge, Brave and Firefox. Hallow Keys fills only when you pick something - in the suggestions under a box, the key icon or the extension button - never by itself, never into hidden boxes, logins only on the site they were saved for, and cards and addresses only on secure (https) pages.", out sv);
             var s1 = new StackPanel();
             s1.Children.Add(new TextBlock { Text = "1. Connect your browsers", FontWeight = FontWeights.SemiBold, FontSize = 14 });
             s1.Children.Add(new TextBlock { Text = "Lets the Hallow Keys extension talk to this app (a small setting for your Windows account; nothing in the browsers is changed).", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 8) });
             var row = new StackPanel { Orientation = Orientation.Horizontal };
             var con = new Button { Content = "Connect browsers", Style = St(NativeHost.Registered ? "Btn" : "Accent"), Margin = new Thickness(0, 0, 8, 0) };
-            con.Click += (s, e) => { try { NativeHost.Register(System.Reflection.Assembly.GetExecutingAssembly().Location); Toast("Connected - Chrome, Edge and Brave can now reach Hallow Keys."); ShowMain(); } catch (Exception ex) { Toast("Couldn't connect: " + ex.Message, true); } };
+            con.Click += (s, e) => { try { NativeHost.Register(System.Reflection.Assembly.GetExecutingAssembly().Location); Toast("Connected - Chrome, Edge, Brave and Firefox can now reach Hallow Keys."); ShowMain(); } catch (Exception ex) { Toast("Couldn't connect: " + ex.Message, true); } };
             row.Children.Add(con);
             row.Children.Add(new TextBlock { Text = NativeHost.Registered ? "Connected" : "Not connected yet", Foreground = NativeHost.Registered ? B("#6ED28C") : B("#F0BE5A"), VerticalAlignment = VerticalAlignment.Center });
             s1.Children.Add(row); sp.Children.Add(Card(s1));
@@ -50,14 +50,34 @@ namespace HallowKeys
             s2.Children.Add(fr);
             if (!Directory.Exists(ExtensionFolder)) s2.Children.Add(new TextBlock { Text = "The extension folder is missing - reinstall Hallow Keys.", Foreground = B("#F0BE5A"), Margin = new Thickness(0, 6, 0, 0) });
             sp.Children.Add(Card(s2));
+            sp.Children.Add(Card(FirefoxRow()));   // v1.5
             var s3 = new StackPanel();
             s3.Children.Add(new TextBlock { Text = "3. Use it", FontWeight = FontWeights.SemiBold, FontSize = 14 });
-            s3.Children.Add(new TextBlock { Text = "On a login page, click the Hallow Keys button (or the key in the password box) and pick a login. On a page that asks for a 2FA code, click the key in the code box or the 2FA button next to the login. After you sign in somewhere new, the button shows a 1 - click it to save the login. The extension only works while Hallow Keys is running and unlocked. After updating Hallow Keys, click the reload button on the extension in the browser's extensions page.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
+            s3.Children.Add(new TextBlock { Text = "Click into a username, password, card or address box: your matching items show under it (arrow keys and Enter, or a click; Esc closes). The key icon and the Hallow Keys button work too. A card's security code is filled after a second click (or always, if you turn that on in the extension). Sign-ins split over two pages remember your pick, and a 2FA code is filled on the next page by itself when the login has one. After you sign in or sign up somewhere new, the button shows a 1 - click it to save the login. The extension only works while Hallow Keys is running and unlocked. After updating Hallow Keys, click the reload button on the extension in the browser's extensions page.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 0) });
             sp.Children.Add(Card(s3));
             var dis = new Button { Content = "Disconnect browsers", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Left, Visibility = NativeHost.Registered ? Visibility.Visible : Visibility.Collapsed };
             dis.Click += (s, e) => { NativeHost.Unregister(); Toast("Disconnected."); ShowMain(); };
             sp.Children.Add(dis);
             return sv;
+        }
+        static string FirefoxFolder { get { return Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "extension-firefox"); } }
+        // v1.5: Firefox - same app link (Connect browsers registers it too), its own add-on build
+        UIElement FirefoxRow()
+        {
+            var s = new StackPanel();
+            s.Children.Add(new TextBlock { Text = "Firefox", FontWeight = FontWeights.SemiBold, FontSize = 14 });
+            var st = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            st.Children.Add(new TextBlock { Text = "Link to Hallow Keys: ", Foreground = Muted });
+            st.Children.Add(new TextBlock { Text = NativeHost.FirefoxRegistered ? "Connected" : "Not connected yet (click Connect browsers above)", Foreground = NativeHost.FirefoxRegistered ? B("#6ED28C") : B("#F0BE5A") });
+            s.Children.Add(st);
+            s.Children.Add(new TextBlock { Text = "Firefox only keeps add-ons signed by Mozilla. To try it now: open about:debugging > This Firefox > Load Temporary Add-on and pick manifest.json in this folder (it stays until Firefox closes). To keep it, sign it once for free with your own Mozilla add-ons account - the steps are in README.txt. After adding it, open about:addons > Hallow Keys > Permissions and allow it on all websites.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 8) });
+            var fr = new DockPanel();
+            var cp = new Button { Content = "Copy folder path", Style = St("Btn"), Margin = new Thickness(8, 0, 0, 0) }; cp.Click += (x, e) => { Clipboard.SetText(FirefoxFolder); Toast("Copied: " + FirefoxFolder); };
+            DockPanel.SetDock(cp, Dock.Right); fr.Children.Add(cp);
+            fr.Children.Add(new TextBox { Style = St("Field"), Text = FirefoxFolder, IsReadOnly = true });
+            s.Children.Add(fr);
+            if (!Directory.Exists(FirefoxFolder)) s.Children.Add(new TextBlock { Text = "The Firefox folder is missing - reinstall Hallow Keys.", Foreground = B("#F0BE5A"), Margin = new Thickness(0, 6, 0, 0) });
+            return s;
         }
     }
 }

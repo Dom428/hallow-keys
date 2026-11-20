@@ -6,9 +6,9 @@ if ([System.Windows.Forms.MessageBox]::Show("Uninstall Hallow Keys?`n`nYour vaul
 Get-Process HallowKeys -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 600
 Remove-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run' -Name 'HallowKeys' -ErrorAction SilentlyContinue
-foreach ($b in 'Software\Google\Chrome', 'Software\Microsoft\Edge', 'Software\BraveSoftware\Brave-Browser') { Remove-Item "HKCU:\$b\NativeMessagingHosts\com.hallow.keys" -Recurse -ErrorAction SilentlyContinue }
+foreach ($b in 'Software\Google\Chrome', 'Software\Microsoft\Edge', 'Software\BraveSoftware\Brave-Browser', 'Software\Mozilla') { Remove-Item "HKCU:\$b\NativeMessagingHosts\com.hallow.keys" -Recurse -ErrorAction SilentlyContinue }
 foreach ($dir in [Environment]::GetFolderPath('Programs'), [Environment]::GetFolderPath('Desktop')) { Remove-Item (Join-Path $dir 'Hallow Keys.lnk') -ErrorAction SilentlyContinue }
 Remove-Item 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\HallowKeys' -Recurse -ErrorAction SilentlyContinue
-foreach ($f in 'hello.bin', 'session.key', 'native-host.json') { Remove-Item (Join-Path $data $f) -ErrorAction SilentlyContinue }
+foreach ($f in 'hello.bin', 'session.key', 'native-host.json', 'native-host-firefox.json') { Remove-Item (Join-Path $data $f) -ErrorAction SilentlyContinue }
 Start-Process cmd.exe -ArgumentList "/c timeout /t 2 /nobreak >nul & rmdir /s /q `"$dest`"" -WindowStyle Hidden
 [System.Windows.Forms.MessageBox]::Show("Hallow Keys is uninstalled. Your vault is still in $data.", 'Hallow Keys') | Out-Null

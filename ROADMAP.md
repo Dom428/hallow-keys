@@ -9,19 +9,20 @@
 | **1.2** | Check for leaked passwords (HIBP range API with Add-Padding, 5-character SHA-1 prefix only, on click or weekly opt-in) in Password Health; opt-in phone copy (AES-256-GCM, own PBKDF2-SHA256 key from the master password) served by Hallow Remote 1.10 over HTTPS and opened on the phone with WebCrypto |
 | **1.3** | Password history (last 10 per login with dates, show / copy / clear); trash with 30-day restore (purged on unlock); tags (sidebar, editor, `#tag` search) and multi-word ranked search; duplicate finder (same site + username, card number, note, identity) that moves extras to the trash; encrypted export with its own password; plain CSV export in NordPass's layout behind a warning and the master password (formula-safe); global quick search shortcut (Ctrl+Shift+Space, rebindable, left off if taken); Ctrl+F; 2FA code fill from the extension (one-time-code boxes, split digit boxes, the key icon and a 2FA button in the popup); reuse warnings in the password box |
 | **1.4** | Quick search shortcut off by default (opt-in in Settings) so it never grabs a combination from games or other apps |
+| **1.5** | Autofill everywhere: cards (cc-* / names / labels, split number and expiry boxes, month and year lists; the security code only on a second click or an extension setting; any https page, never http) and addresses (names, email, phone, address lines, city, postcode, country lists) in the browser; inline suggestions under the focused box (closed shadow root, titles only until you pick, keyboard, Esc, off switch); two-step sign-ins (the pick remembered per tab for 5 minutes), sign-up / change-password forms offered for saving, the 2FA code filled on the next page (same tab and site, 2 minutes, once); desktop app autofill (opt-in, no shortcut until you pick one; Apps field on logins with a running-program picker; SendInput with KEYEVENTF_UNICODE; refuses when locked, unknown program, elevated, full screen or a game running); Firefox MV3 build and its native host registration; extension 1.5.0 |
 
 ## Road to NordPass / 1Password level
 
-Where Keys stands at 1.4: a solid single-PC vault with browser autofill, Password Health, 2FA codes and a read-only phone copy. Already matched: password history, trash, tags, duplicate finder, exports, quick access shortcut, 2FA fill, strength meter and reuse warnings, leaked-password check.
+Where Keys stands at 1.5: a solid single-PC vault with browser autofill for logins, cards and addresses (Chrome, Edge, Brave, Firefox), desktop app autofill, Password Health, 2FA codes and a read-only phone copy. Already matched: password history, trash, tags, duplicate finder, exports, quick access shortcut, 2FA fill, inline suggestions, two-step sign-ins, strength meter and reuse warnings, leaked-password check.
 
 What NordPass and 1Password still do better, and the plan to close it. Hallow Keys has no server and no accounts, so everything below either works on this PC or travels through things you already own (a cloud folder, Tailscale, Hallow Remote).
 
-### 1.5 - Autofill everywhere
-- Cards and identities filled in the browser (checkout and address forms); the card's CVC only after a click
-- Inline suggestions under the field (1Password style), not only the key icon and popup
-- Two-step logins (username page, then password page), save after "sign up", 2FA box filled right after the password
-- **Desktop app autofill** (like 1Password's Universal Autofill): a shortcut types the login into the focused Windows app, matched by its program (Steam, Battle.net, Riot Client, Epic, EA app, Ubisoft Connect). Opt-in, never into a game window
-- Firefox extension (needs a free Mozilla add-on signature: one step for you)
+### 1.5 - Autofill everywhere (done in 1.5)
+- Done: cards and identities filled in the browser (checkout and address forms); the card's CVC only after a click
+- Done: inline suggestions under the field (1Password style), not only the key icon and popup
+- Done: two-step logins (username page, then password page), save after "sign up", 2FA box filled right after the password
+- Done: **desktop app autofill** (like 1Password's Universal Autofill): a shortcut types the login into the focused Windows app, matched by its program (Steam, Battle.net, Riot Client, Epic, EA app, Ubisoft Connect). Opt-in, never into a game window
+- Done: Firefox extension (needs a free Mozilla add-on signature: one step for you - see README)
 
 ### 1.6 - Every kind of item
 - Item types like 1Password's: SSH key, API key, software licence, bank account, passport / driving licence, Wi-Fi network, server / database, membership, crypto wallet (seed phrase hidden by default)
@@ -76,6 +77,9 @@ What NordPass and 1Password still do better, and the plan to close it. Hallow Ke
 ## Next
 
 ### Still to check by hand
+- Desktop app autofill typing into a real Steam / Battle.net / Riot / Epic / EA / Ubisoft sign-in box with real key presses (the matching and every refusal are tested with a pretend program in front and a stand-in that only records what it would type; real SendInput was never run in the tests, so nothing could land in a game), and the chooser window
+- Cards, addresses, inline suggestions, two-step sign-ins and the 2FA-after-password fill on real shops and sites in a real browser (tested in headless Edge on made-up pages and with the real background script against the real app)
+- The Firefox build in a real Firefox, and signing it on addons.mozilla.org (needs your Mozilla account)
 - The quick search shortcut with real key presses, and rebinding it in Settings (tested by posting Windows' hotkey message, and with another program holding the combination)
 - The extension's 2FA fill on real sites (tested in headless Edge with made-up 2FA pages and a fake extension client)
 - The real Have I Been Pwned API (tested with a local stand-in) and the phone copy on a real phone over Remote's HTTPS with a real Tailscale certificate (tested with WebCrypto in Node and a self-signed certificate)

@@ -5,7 +5,7 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 > **Not audited.** Hallow Keys hasn't been reviewed by security experts. Keep using a tried-and-tested password manager for anything that matters, and keep backups.
 
 - **Logins, secure notes, cards, identities** with folders, **tags**, favourites, search and small encrypted file attachments (up to 10 MB each)
-- **Quick search** - a global shortcut (Ctrl+Shift+Space, change it in Settings) opens Hallow Keys with the search box ready; every word you type has to match, `#tag` finds a tag, Enter opens the best match
+- **Quick search** - an optional global shortcut (off by default; turn it on in Settings, Ctrl+Shift+Space or your own) opens Hallow Keys with the search box ready; every word you type has to match, `#tag` finds a tag, Enter opens the best match
 - **Password history** - each login keeps its last 10 passwords (with the date each was replaced), to show or copy
 - **Trash** - deleted items can be restored for 30 days; a **duplicate finder** for the same account saved twice
 - **Generator** - random characters or passphrases, made with Windows' cryptographic random numbers
@@ -20,6 +20,7 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 
 ## What's new
 
+- **1.4** - The quick search shortcut is now off by default, so Hallow Keys never takes Ctrl+Shift+Space away from games or other apps unless you turn it on (Settings > Quick search shortcut).
 - **1.3** - Password history (show or copy any of a login's last 10 passwords); a trash that keeps deleted items for 30 days; tags and a smarter search; a duplicate finder; an encrypted export with its own password and a plain CSV export (with a strong warning); a global quick search shortcut (Ctrl+Shift+Space, changeable, left off if another app already uses it); the browser extension fills 2FA codes on the page that asks for them (reload the extension once after updating). The password box now also warns when a password is used by another login or was used here before.
 - **1.2** - Check for leaked passwords (Have I Been Pwned - only a 5-character hash prefix leaves your PC), shown in Password Health; an optional read-only phone copy you open in Hallow Remote's Keys tab (needs Remote's HTTPS).
 - **1.1** - Browser autofill for Chrome, Edge and Brave: an extension (in the `extension` folder) that fills a login when you click it or the key in a password box, and offers to save new logins after you sign in.

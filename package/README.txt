@@ -9,6 +9,9 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.4
+- The quick search shortcut is off by default now - turn it on in Settings if you want it.
+
 WHAT'S NEW IN 1.3
 - Password history, a trash (30 days to restore), tags, a smarter search and a duplicate finder.
 - Encrypted export with its own password, and a plain CSV export (with a strong warning).
@@ -27,7 +30,7 @@ WHAT'S NEW IN 1.0
 
 WHAT IT DOES
 - Logins, secure notes, cards and identities, with folders, tags, favourites, search and small files
-- Quick search from anywhere with Ctrl+Shift+Space (change or turn it off in Settings)
+- Quick search from anywhere with Ctrl+Shift+Space (off by default since 1.4 - turn it on in Settings)
 - Password history, a trash (30 days to restore) and a duplicate finder
 - A password generator, Password Health (weak, reused, old, leaked) and 2FA codes
 - Check for leaked passwords (Password Health) - only a short hash prefix leaves your PC

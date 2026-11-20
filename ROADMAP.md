@@ -6,29 +6,72 @@
 |---|---|
 | **1.0** | Vault (AES-256-GCM via CNG, PBKDF2-SHA256 600k, envelope with a data key, atomic saves with .bak), logins / notes / cards / identities, folders, favourites, search, encrypted files, generator, Password Health, TOTP, NordPass / CSV / Bitwarden import, encrypted backup, recovery sheet, master password change, auto-lock, clipboard clearing, optional Windows Hello |
 | **1.1** | Browser autofill: Manifest V3 extension (Chrome, Edge, Brave) with a fixed ID; native messaging host (HallowKeys.exe, pinned to that ID, per-user HKCU registration) relaying to the running app over a pipe with a per-session secret; exact-host or registrable-domain matching, no http for https logins, fill only on click into visible fields in the top / same-origin frames; save and update offers after a login form is sent |
+| **1.2** | Check for leaked passwords (HIBP range API with Add-Padding, 5-character SHA-1 prefix only, on click or weekly opt-in) in Password Health; opt-in phone copy (AES-256-GCM, own PBKDF2-SHA256 key from the master password) served by Hallow Remote 1.10 over HTTPS and opened on the phone with WebCrypto |
 | **1.3** | Password history (last 10 per login with dates, show / copy / clear); trash with 30-day restore (purged on unlock); tags (sidebar, editor, `#tag` search) and multi-word ranked search; duplicate finder (same site + username, card number, note, identity) that moves extras to the trash; encrypted export with its own password; plain CSV export in NordPass's layout behind a warning and the master password (formula-safe); global quick search shortcut (Ctrl+Shift+Space, rebindable, left off if taken); Ctrl+F; 2FA code fill from the extension (one-time-code boxes, split digit boxes, the key icon and a 2FA button in the popup); reuse warnings in the password box |
 | **1.4** | Quick search shortcut off by default (opt-in in Settings) so it never grabs a combination from games or other apps |
-| **1.2** | Check for leaked passwords (HIBP range API with Add-Padding, 5-character SHA-1 prefix only, on click or weekly opt-in) in Password Health; opt-in phone copy (AES-256-GCM, own PBKDF2-SHA256 key from the master password) served by Hallow Remote 1.10 over HTTPS and opened on the phone with WebCrypto |
 
-## Gaps vs NordPass
+## Road to NordPass / 1Password level
 
-| NordPass has | Hallow Keys |
-|---|---|
-| Password history per item | **1.3** |
-| Trash with restore | **1.3** (30 days) |
-| Tags / better search | **1.3** |
-| Duplicate finder | **1.3** (NordPass doesn't have one; it's the obvious companion to Password Health) |
-| Encrypted and CSV export | **1.3** |
-| Quick access shortcut | **1.3** (Ctrl+Shift+Space, rebindable; opt-in since 1.4) |
-| 2FA codes filled by the browser extension | **1.3** |
-| Password strength while you type | 1.0 (1.3 adds reuse warnings) |
-| Breach check for passwords | 1.2 |
-| Phone access | 1.2 (read-only, through Hallow Remote) |
-| Passkeys | Not planned for now (needs WebAuthn in the extension - big and risky to get wrong) |
-| Sharing items with other people | Not planned (needs accounts and a server) |
-| Email breach monitoring | Later (needs a paid Have I Been Pwned API key) |
-| Sync between devices / cloud | Not planned (everything stays on this PC; use encrypted backups) |
-| Autofill of cards and identities in the browser | Later |
+Where Keys stands at 1.4: a solid single-PC vault with browser autofill, Password Health, 2FA codes and a read-only phone copy. Already matched: password history, trash, tags, duplicate finder, exports, quick access shortcut, 2FA fill, strength meter and reuse warnings, leaked-password check.
+
+What NordPass and 1Password still do better, and the plan to close it. Hallow Keys has no server and no accounts, so everything below either works on this PC or travels through things you already own (a cloud folder, Tailscale, Hallow Remote).
+
+### 1.5 - Autofill everywhere
+- Cards and identities filled in the browser (checkout and address forms); the card's CVC only after a click
+- Inline suggestions under the field (1Password style), not only the key icon and popup
+- Two-step logins (username page, then password page), save after "sign up", 2FA box filled right after the password
+- **Desktop app autofill** (like 1Password's Universal Autofill): a shortcut types the login into the focused Windows app, matched by its program (Steam, Battle.net, Riot Client, Epic, EA app, Ubisoft Connect). Opt-in, never into a game window
+- Firefox extension (needs a free Mozilla add-on signature: one step for you)
+
+### 1.6 - Every kind of item
+- Item types like 1Password's: SSH key, API key, software licence, bank account, passport / driving licence, Wi-Fi network, server / database, membership, crypto wallet (seed phrase hidden by default)
+- Custom fields of any type (text, hidden, URL, date, 2FA, email, phone), your own item templates, several URLs per login
+- Expiry dates (cards, passports, licences) with reminders
+
+### 1.7 - Watchtower-level health
+- "2FA available": sites that support 2FA where the login has none (the public 2fa.directory list, downloaded and cached, no key)
+- Breached sites: "this site was breached after you last changed this password" (Have I Been Pwned's free breach list, no key)
+- Unsecured (http) sites, expiring items and old passwords next to weak / reused / leaked, with one security score and the fixes in order
+
+### 2.0 - Sync between your devices (no Hallow server)
+- The vault in a folder you choose (OneDrive, Google Drive, Dropbox, a NAS, Syncthing); several PCs open the same vault
+- A per-item change log, so edits on two PCs merge instead of one winning; real conflicts kept as copies
+- **Secret Key** like 1Password's: a random 128-bit key on each device, mixed with the master password and printed on the Emergency Kit, so a stolen cloud copy can't be guessed offline
+- Argon2id for the master password (memory-hard, checked against RFC 9106 test vectors) alongside PBKDF2
+
+### 2.1 - Vaults and Travel Mode
+- Several vaults (Personal, Gaming, Work, Shared), moving items between them, export per vault
+- Travel Mode (1Password): vaults not marked "safe for travel" disappear from this PC until you turn it off
+
+### 2.2 - Passkeys
+- The extension answers websites' passkey requests (WebAuthn create / get). The keys (ES256) live in the vault and sign in the app, never in the page
+- Tested against a local WebAuthn test server first, then real sites (webauthn.io, GitHub, Google) by hand
+- Later: Windows 11's own third-party passkey provider support, once it's generally available
+
+### 2.3 - Sharing (no server)
+- Share one item as an encrypted file or a Hallow Remote link with its own passphrase and an expiry (like 1Password's item sharing)
+- A family vault in a shared cloud folder: each person runs their own Keys, and items are encrypted to each member's public key (ECDH P-256 + AES-GCM)
+
+### 2.4 - Emergency access
+- Emergency Kit (recovery code, Secret Key and how to restore) as a printable sheet
+- Trusted-contact package: an encrypted copy only your contact's Keys can open. NordPass's "release after a waiting period" needs a server, so that part isn't possible here
+
+### 2.5 - Developer tools
+- SSH agent (like 1Password's): SSH keys from the vault over Windows' OpenSSH agent pipe, each use approved with a prompt or Windows Hello; git commit signing
+- A command line (`HallowKeys.exe --get`) to put secrets into scripts and .env files, approved per use
+
+### 2.6 - Phone, properly
+- The phone page in Hallow Remote becomes a full editor (add, edit, generate) that syncs back to the PC
+- A native Android app with system-wide autofill is **not buildable here** (needs Android Studio and Play signing); an iPhone app needs a Mac
+
+### Opt-in extras that need your own key
+- Email breach monitoring (a paid Have I Been Pwned API key)
+- Masked email addresses (your own SimpleLogin or addy.io API key), like NordPass's and 1Password's email masking
+
+### What can't be matched
+- An independent security audit and a bug bounty (NordPass and 1Password pay for these). Keys publishes its threat model and test suite instead
+- Account recovery by a company, a business admin console, cloud backups run by someone else
+- Native phone autofill on Android and iPhone (see 2.6)
 
 ## Next
 
@@ -40,6 +83,3 @@
 - Windows Hello's real prompt (tested with the prompt stubbed)
 - Importing a real NordPass export (tested with a made-up file in NordPass's column layout)
 - Printing the recovery sheet
-
-### Later
-- Email breach search (needs a paid Have I Been Pwned API key)

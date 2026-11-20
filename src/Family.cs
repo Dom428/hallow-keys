@@ -77,8 +77,9 @@ namespace HallowKeys
             {
                 try
                 {
-                    var buf = new List<byte>(); var one = new byte[1];
-                    while (buf.Count < 4 * 1024 * 1024) { int n = s.Read(one, 0, 1); if (n <= 0 || one[0] == (byte)'\n') break; buf.Add(one[0]); }
+                    // v2.7: read in chunks (one line per connection), so a long line - a change from the phone - arrives quickly
+                    var buf = new MemoryStream(); var chunk = new byte[65536];
+                    while (buf.Length < 4 * 1024 * 1024) { int n = s.Read(chunk, 0, chunk.Length); if (n <= 0) break; int nl = Array.IndexOf(chunk, (byte)'\n', 0, n); if (nl >= 0) { buf.Write(chunk, 0, nl); break; } buf.Write(chunk, 0, n); }
                     result = Encoding.UTF8.GetString(buf.ToArray()).TrimEnd('\r');
                 }
                 catch { }

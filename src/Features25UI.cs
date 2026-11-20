@@ -101,6 +101,7 @@ namespace HallowKeys
             w.MakeEmergency();
             w.ShowEmergencyKit("ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-2345-6789", "HK-ABCDEF-GHJKLM-NPQRST-UVWXYZ-2345", "v25");
             SnapExtra26(w);   // v2.6
+            SnapExtra27(w);   // v2.7
         }
     }
 }

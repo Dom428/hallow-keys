@@ -27,6 +27,7 @@ namespace HallowKeys
             {
                 var m = new ContextMenu();
                 var f = new MenuItem { Header = "As an encrypted file (passphrase + expiry)...", Icon = Icons.Make("file-export", 12, Muted) }; f.Click += (a, c) => ShareAsFile(it); m.Items.Add(f);
+                var l = new MenuItem { Header = "As a one-time Hallow Remote link (passphrase + expiry)...", Icon = Icons.Make("link", 12, Muted) }; l.Click += (a, c) => ShareAsRemoteLink(it); m.Items.Add(l);   // v2.7
                 foreach (var r0 in SharedRefs()) { var r = r0; var mi = new MenuItem { Header = "Copy into the shared vault \"" + r.Name + "\"", Icon = Icons.Make("users", 12, Muted) }; mi.Click += (a, c) => CopyIntoShared(r, it); m.Items.Add(mi); }
                 if (SharedRefs().Count == 0) m.Items.Add(new MenuItem { Header = "No shared vaults yet (Sharing page)", IsEnabled = false });
                 m.PlacementTarget = b; m.Placement = PlacementMode.Bottom; m.IsOpen = true;
@@ -178,7 +179,7 @@ namespace HallowKeys
             sp.Children.Add(new TextBlock { Text = "A shared vault is one file in the folder; each member's Hallow Keys opens it with their own key and merges everyone's changes item by item (like sync between your PCs). Copies you put in are copies: changing your own item later doesn't change the shared one.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, FontSize = 11.5, Margin = new Thickness(0, 4, 0, 14) });
             // a single item
             sp.Children.Add(new TextBlock { Text = "One item as a file", FontWeight = FontWeights.SemiBold, FontSize = 15 });
-            sp.Children.Add(new TextBlock { Text = "Share sends one item as a .hkshare file with its own passphrase and an expiry (open an item, click Share). Send the file and the passphrase by different routes. Passkeys can't be shared. Through Hallow Remote as a link: not yet - it needs a Hallow Remote update.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 6) });
+            sp.Children.Add(new TextBlock { Text = "Share sends one item as a .hkshare file with its own passphrase and an expiry (open an item, click Share). Send the file and the passphrase by different routes. Passkeys can't be shared. Or as a one-time link served by Hallow Remote 1.12 (Share > As a one-time Hallow Remote link): it opens once, in a browser on your phone or another device that can reach your PC.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 6) });
             var oi = new Button { Content = "Open a shared item file", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Left }; oi.Click += (s, e) => OpenItemShare(); sp.Children.Add(oi);
             EmergencySection(sp);   // v2.5
             return sv;

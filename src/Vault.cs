@@ -113,7 +113,10 @@ namespace HallowKeys
         // v2.4: your member identity (ECDH P-256 - the private half only ever inside the encrypted vault) and the shared vaults you're in
         [DataMember(EmitDefaultValue = false)] public byte[] MemberKey, MemberPub;
         [DataMember(EmitDefaultValue = false)] public string MemberName;
-        [DataMember(EmitDefaultValue = false)] public List<SharedRef> Shared;           // v2.1: when each item was last filled, copied or opened (merged by the latest time, never part of an item's revision)
+        [DataMember(EmitDefaultValue = false)] public List<SharedRef> Shared;
+        // v2.7: changes from the phone - the record ids already applied (48 hours, so a replay is refused) and what they did (the Activity list)
+        [DataMember(EmitDefaultValue = false)] public List<string> PhoneSeen;
+        [DataMember(EmitDefaultValue = false)] public List<PhoneLogEntry> PhoneLog;           // v2.1: when each item was last filled, copied or opened (merged by the latest time, never part of an item's revision)
         [OnDeserialized] void Fix(StreamingContext c) { if (Tombstones == null) Tombstones = new List<Tombstone>(); if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); if (Templates == null) Templates = new List<ItemTemplate>(); if (ExpiryNotified == null) ExpiryNotified = new List<string>(); }
     }
 

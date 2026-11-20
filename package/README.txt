@@ -9,6 +9,15 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.7 - PHONE, PROPERLY
+- With Hallow Remote 1.12, the phone's Keys tab can edit: turn on "Let the phone edit" (Settings > App, under the phone
+  copy; off by default). Add, edit, move to the trash, generate passwords, 2FA keys, folders and vaults.
+- Each change is sealed on the phone with your phone key and checked by Hallow Keys before anything changes. If the item
+  changed on the PC meanwhile, the phone's version is kept as a "(conflict copy from phone)". Passkeys, SSH keys and
+  wallets stay view-only. The PC has to be unlocked.
+- Settings > Activity lists every phone change; "Undo phone changes" restores the snapshot from just before them.
+- Share > As a one-time Hallow Remote link: opens once, in a browser, with a passphrase.
+
 WHAT'S NEW IN 2.6 - DEVELOPER TOOLS
 - Settings > Developer tools (both off until you turn them on, only while Hallow Keys is unlocked):
 - SSH agent: tick the SSH keys to offer; Windows' ssh, ssh-add, ssh-keygen and git find them on Windows' standard agent pipe.

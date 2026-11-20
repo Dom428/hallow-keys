@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.6.0.0")]
-[assembly: AssemblyFileVersion("2.6.0.0")]
+[assembly: AssemblyVersion("2.7.0.0")]
+[assembly: AssemblyFileVersion("2.7.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.6";
+        public const string Version = "2.7";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -314,6 +314,7 @@ namespace HallowKeys
                     new Dictionary<string, object> { { "id", "lock" }, { "label", "Lock now" }, { "enabled", vault != null } },
                     new Dictionary<string, object> { { "id", "generate" }, { "label", "Generate password" } } } } }));
                 case "invoke": return OnUi(() => MenuInvoke(arg));
+                case "phone-change": return OnUi(() => PhoneChangeCmd(arg));   // v2.7: a sealed change from the phone, passed on by Hallow Remote
                 case "quit": new Thread(() => { Thread.Sleep(300); Dispatcher.BeginInvoke(new Action(Quit)); }) { IsBackground = true }.Start(); return "ok";
             }
             return "error unknown command";

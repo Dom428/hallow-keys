@@ -368,10 +368,6 @@ namespace HallowKeys
             page.Children.Add(Card(box));
         }
 
-        // v2.7 fills these in (changes from the phone)
-        IEnumerable<ActivityEntry> PhoneActivity() { return new ActivityEntry[0]; }
-        void PhoneUndoRow(StackPanel box) { }
-
         // ---- --snap pictures (made-up keys only; nothing served)
         void SnapExtra26(MainWindow w)
         {

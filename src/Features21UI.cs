@@ -1,6 +1,6 @@
 ﻿// Hallow Keys 2.1 - the window parts of "NordPass look, plus vaults":
 //  - the main list as a table: search bar (Ctrl+F), a big title with Create item, category tabs (All items, Logins, Secure notes, Cards,
-//    Contact info, Documents, Other - Passkeys stays hidden until 2.2), sortable columns (Title, Last used, Folder, Modified), tick boxes
+//    Contact info, Documents, Other - Passkeys stays hidden until 2.3), sortable columns (Title, Last used, Folder, Modified), tick boxes
 //    for several items at once (move to a folder or vault, tag, favourite, trash), keyboard (Up/Down, Space, Ctrl+A, Delete, Esc)
 //  - site icons or a coloured letter tile per login; the details panel opens on the right
 //  - the vault switcher, the Vaults and travel page, Travel Mode, the site icons setting, and "last used" (see Vaults21.cs)
@@ -105,7 +105,7 @@ namespace HallowKeys
             var tabs = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
             foreach (var t in Vaults.Tabs)
             {
-                if (t == "passkey" && !Vaults.PasskeysReady) continue;   // 2.2
+                if (t == "passkey" && !Vaults.PasskeysReady) continue;   // 2.3
                 var id = t; int n = basis.Count(i => Vaults.InTab(i, id));
                 var c = new StackPanel { Orientation = Orientation.Horizontal };
                 c.Children.Add(new TextBlock { Text = Vaults.TabName(id), FontWeight = tab == id ? FontWeights.SemiBold : FontWeights.Normal });

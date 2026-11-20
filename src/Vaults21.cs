@@ -252,7 +252,7 @@ namespace HallowKeys
                 case "identity": return "Contact info"; case "document": return "Documents"; case "other": return "Other"; default: return "All items";
             }
         }
-        public static bool PasskeysReady = false;   // the Passkeys tab stays hidden until passkeys arrive (2.2)
+        public static bool PasskeysReady = false;   // the Passkeys tab stays hidden until passkeys arrive (2.3)
         // which tab an item shows in (besides All); Documents also holds every item that has files attached
         public static bool InTab(Item it, string tab)
         {

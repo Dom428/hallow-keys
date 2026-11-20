@@ -9,6 +9,16 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.2 - EVERY BROWSER
+- Connect browsers (Browser page) now also covers Opera, Opera GX, Vivaldi, Arc, Chromium and Yandex, next to Chrome, Edge,
+  Brave and Firefox - set up only where each browser actually looks (Opera, Opera GX, Vivaldi and Arc use Chrome's link).
+- The Browser page lists every browser: installed or not, connected or not, and its extensions page. After installing a new
+  browser, click Connect browsers again.
+- Load the extension in any of them: open its extensions page (chrome://, edge://, brave://, opera://, vivaldi://, arc:// or
+  browser://extensions), turn on Developer mode, Load unpacked, pick the extension folder next to HallowKeys.exe.
+- The store folder has ready-to-upload zips for the Chrome Web Store and Firefox Add-ons, a draft listing and privacy policy -
+  nothing has been published; see the README on GitHub for what publishing needs (a developer account, Chrome's $5 fee...).
+
 WHAT'S NEW IN 2.1 - NORDPASS LOOK, PLUS VAULTS
 - A new main screen: search bar (Ctrl+F), Create item, category tabs (All items, Logins, Secure notes, Cards, Contact info,
   Documents, Other) and a table you can sort by Title, Last used, Folder and Modified. Tick boxes (or Ctrl/Shift+click, Space,

@@ -79,7 +79,7 @@ namespace HallowKeys
         static void StartApp() { try { System.Diagnostics.Process.Start(System.Reflection.Assembly.GetExecutingAssembly().Location); } catch { } }
 
         // ---- registering the host with the browsers (per user, HKCU; asked for in the app). HALLOW_KEYS_REGROOT (tests) uses another key.
-        public static readonly string[][] Browsers = { new[] { "Chrome", @"Software\Google\Chrome" }, new[] { "Edge", @"Software\Microsoft\Edge" }, new[] { "Brave", @"Software\BraveSoftware\Brave-Browser" } };
+        // v2.2: which keys are written and read is in Browsers22.cs (Chrome always; Edge, Brave, Chromium, Yandex, Firefox when installed)
         static string RegRoot(string b) { var t = KeysSettings.TestDir != null ? Environment.GetEnvironmentVariable("HALLOW_KEYS_REGROOT") : null; return (t != null ? t + "\\" + b.Substring("Software\\".Length) : b) + @"\NativeMessagingHosts\" + HostName; }
         public static string ManifestPath { get { return Path.Combine(KeysSettings.Dir, "native-host.json"); } }
         public static void Register(string exePath)
@@ -87,7 +87,8 @@ namespace HallowKeys
             Directory.CreateDirectory(KeysSettings.Dir);
             var m = js.Serialize(new Dictionary<string, object> { { "name", HostName }, { "description", "Hallow Keys" }, { "path", exePath }, { "type", "stdio" }, { "allowed_origins", new[] { Origin } } });
             File.WriteAllText(ManifestPath, m, new UTF8Encoding(false));
-            foreach (var b in Browsers) using (var k = Registry.CurrentUser.CreateSubKey(RegRoot(b[1]))) k.SetValue("", ManifestPath);
+            foreach (var key in HallowKeys.Browsers.KeysToWrite()) using (var k = Registry.CurrentUser.CreateSubKey(RegRoot(key))) k.SetValue("", ManifestPath);
+            if (!HallowKeys.Browsers.FirefoxWanted()) return;
             // v1.5 Firefox: its own manifest with allowed_extensions (add-on IDs instead of origins)
             var fm = js.Serialize(new Dictionary<string, object> { { "name", HostName }, { "description", "Hallow Keys" }, { "path", exePath }, { "type", "stdio" }, { "allowed_extensions", new[] { FirefoxId } } });
             File.WriteAllText(FirefoxManifestPath, fm, new UTF8Encoding(false));
@@ -95,12 +96,23 @@ namespace HallowKeys
         }
         public static void Unregister()
         {
-            foreach (var b in Browsers) try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(b[1]), false); } catch { }
-            try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(FirefoxRoot), false); } catch { }
+            foreach (var key in HallowKeys.Browsers.OwnKeys) try { Registry.CurrentUser.DeleteSubKeyTree(RegRoot(key), false); } catch { }
             try { File.Delete(ManifestPath); } catch { }
             try { File.Delete(FirefoxManifestPath); } catch { }
         }
-        public static bool Registered { get { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(Browsers[0][1]))) return k != null && File.Exists(ManifestPath); } }
+        public static bool Registered { get { return KeyPointsTo(HallowKeys.Browsers.Get("chrome").RegKey, ManifestPath); } }
+        // v2.2: is this browser key there and does it name that manifest (which exists)?
+        public static bool KeyExists(string browserKey) { try { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(browserKey))) return k != null; } catch { return false; } }
+        public static bool KeyPointsTo(string browserKey, string manifest)
+        {
+            try { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(browserKey))) return k != null && string.Equals(k.GetValue("") as string, manifest, StringComparison.OrdinalIgnoreCase) && File.Exists(manifest); }
+            catch { return false; }
+        }
+        // the program a host manifest starts (null if unreadable)
+        public static string ManifestExe(string manifest)
+        {
+            try { var m = js.Deserialize<Dictionary<string, object>>(File.ReadAllText(manifest)); object p; return m.TryGetValue("path", out p) ? p as string : null; } catch { return null; }
+        }
         public static bool FirefoxRegistered { get { using (var k = Registry.CurrentUser.OpenSubKey(RegRoot(FirefoxRoot))) return k != null && File.Exists(FirefoxManifestPath); } }
         public const string FirefoxRoot = @"Software\Mozilla";   // HKCU\Software\Mozilla\NativeMessagingHosts\com.hallow.keys
         public static string FirefoxManifestPath { get { return Path.Combine(KeysSettings.Dir, "native-host-firefox.json"); } }

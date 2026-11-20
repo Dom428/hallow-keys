@@ -66,10 +66,7 @@ namespace HallowKeys
         public static void Write(VaultData d)
         {
             if (d.PhoneKey == null || d.PhoneSalt == null) return;
-            var items = d.Items.Select(i => new Dictionary<string, object> {
-                { "type", i.Type }, { "title", i.Title }, { "folder", i.Folder }, { "fav", i.Favorite }, { "user", i.Username }, { "pw", i.Password }, { "urls", i.Urls }, { "totp", i.Totp }, { "notes", i.Notes },
-                { "cardHolder", i.CardHolder }, { "cardNumber", i.CardNumber }, { "expiry", i.Expiry }, { "cvc", i.Cvc }, { "pin", i.Pin },
-                { "name", i.FullName }, { "email", i.Email }, { "phone", i.Phone }, { "address", string.Join(", ", new[] { i.Address, i.City, i.PostCode, i.Country }.Where(x => !string.IsNullOrEmpty(x))) } }).ToList();
+            var items = d.Items.Select(ItemTypes.PhoneItem).ToList();   // v1.6: new types and your own fields in a form Remote 1.10 already shows (see ItemTypes.PhoneItem)
             var json = new JavaScriptSerializer { MaxJsonLength = 64 * 1024 * 1024 }.Serialize(new Dictionary<string, object> { { "made", DateTime.Now.ToString("s") }, { "items", items } });
             var plain = Encoding.UTF8.GetBytes(json);
             try

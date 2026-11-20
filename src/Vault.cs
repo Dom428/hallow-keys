@@ -6,6 +6,9 @@
 //   | data nonce(12) | u32 cipherLength                         = header (all of it is the AAD of the data)
 //   | ciphertext | tag(16)                                     - the items (JSON), AES-256-GCM under the data key
 // v1.3 adds password history dates, tags and a trash to the items JSON - all inside the encrypted part; the file format is unchanged.
+// v1.6 writes format 2 (the same layout): 1.6 items have fields that older versions would drop when they save, so Hallow Keys 1.5 and
+// older refuse a format-2 file ("made by a newer Hallow Keys") instead of opening it and losing data. Format 1 files open and are saved
+// as format 2. Every class keeps members it doesn't know (IExtensibleDataObject), so a newer version's extra data survives a save.
 // A new random nonce for every save. Saves are atomic (temp file, then replace) and keep the previous good file as .bak.
 using System;
 using System.Collections.Generic;
@@ -17,13 +20,42 @@ using System.Text;
 
 namespace HallowKeys
 {
-    [DataContract] public class Attachment
+    [DataContract] public class Attachment : IExtensibleDataObject
     {
+        public ExtensionDataObject ExtensionData { get; set; }
         [DataMember] public string Name = "";
         [DataMember] public byte[] Data = new byte[0];
     }
-    [DataContract] public class Item
+    // v1.6: one field of an item - a built-in field of the item's type (Key set, e.g. "privateKey") or one of your own (Key "")
+    [DataContract] public class CustomField : IExtensibleDataObject
     {
+        public ExtensionDataObject ExtensionData { get; set; }
+        [DataMember] public string Id = Guid.NewGuid().ToString("N");
+        [DataMember] public string Key = "";
+        [DataMember] public string Label = "";
+        [DataMember] public string Kind = "text";      // text, hidden, url, date, totp, email, phone; built-in fields also: note, secretnote
+        [DataMember] public string Value = "";
+        [DataMember] public bool Expires;               // date fields: an expiry date (reminders, the Expiring view)
+        [DataMember] public List<string> Old = new List<string>(), OldDates = new List<string>();   // hidden fields: previous values (newest first, at most 10)
+        [OnDeserialized] void Fix(StreamingContext c)
+        {
+            if (Id == null) Id = Guid.NewGuid().ToString("N"); if (Key == null) Key = ""; if (Label == null) Label = ""; if (string.IsNullOrEmpty(Kind)) Kind = "text"; if (Value == null) Value = "";
+            if (Old == null) Old = new List<string>(); if (OldDates == null) OldDates = new List<string>();
+        }
+    }
+    // v1.6: your own item template - a type and a field layout, never any values
+    [DataContract] public class ItemTemplate : IExtensibleDataObject
+    {
+        public ExtensionDataObject ExtensionData { get; set; }
+        [DataMember] public string Id = Guid.NewGuid().ToString("N");
+        [DataMember] public string Name = "";
+        [DataMember] public string Type = "login";
+        [DataMember] public List<CustomField> Fields = new List<CustomField>();
+        [OnDeserialized] void Fix(StreamingContext c) { if (Id == null) Id = Guid.NewGuid().ToString("N"); if (Name == null) Name = ""; if (string.IsNullOrEmpty(Type)) Type = "login"; if (Fields == null) Fields = new List<CustomField>(); }
+    }
+    [DataContract] public class Item : IExtensibleDataObject
+    {
+        public ExtensionDataObject ExtensionData { get; set; }
         [DataMember] public string Id = Guid.NewGuid().ToString("N");
         [DataMember] public string Type = "login";   // login, note, card, identity
         [DataMember] public string Title = "";
@@ -44,23 +76,28 @@ namespace HallowKeys
         [DataMember] public List<string> Tags = new List<string>();               // v1.3
         [DataMember] public DateTime? Deleted;                                   // v1.3: when it went to the trash (null = not in the trash)
         [DataMember] public List<string> Apps = new List<string>();              // v1.5: desktop programs this login types into (exe names, e.g. steam.exe)
+        [DataMember] public List<CustomField> Fields = new List<CustomField>();  // v1.6: the new types' fields and your own fields on any item
+        [DataMember] public bool SeedOnPhone;                                    // v1.6: crypto wallet - put the recovery phrase in the phone copy (off unless switched on)
         [OnDeserialized] void Fix(StreamingContext c)
         {
             if (Urls == null) Urls = new List<string>(); if (Files == null) Files = new List<Attachment>(); if (OldPasswords == null) OldPasswords = new List<string>();
-            if (OldPasswordDates == null) OldPasswordDates = new List<string>(); if (Tags == null) Tags = new List<string>(); if (Apps == null) Apps = new List<string>();
+            if (OldPasswordDates == null) OldPasswordDates = new List<string>(); if (Tags == null) Tags = new List<string>(); if (Apps == null) Apps = new List<string>(); if (Fields == null) Fields = new List<CustomField>();
             foreach (var f in new[] { "Username", "Password", "Totp", "CardHolder", "CardNumber", "Expiry", "Cvc", "Pin", "FullName", "Email", "Phone", "Address", "City", "PostCode", "Country", "Notes", "Title", "Folder", "Type" })
             { var p = GetType().GetField(f); if (p.GetValue(this) == null) p.SetValue(this, f == "Type" ? "login" : ""); }
         }
         public string Host { get { return Urls.Select(Domain.HostOf).FirstOrDefault(h => h != null); } }
     }
-    [DataContract] public class VaultData
+    [DataContract] public class VaultData : IExtensibleDataObject
     {
+        public ExtensionDataObject ExtensionData { get; set; }
         [DataMember] public List<Item> Items = new List<Item>();
         [DataMember] public List<string> Folders = new List<string>();
         [DataMember] public List<string> LeakedIds = new List<string>();   // v1.2: logins whose password was found in a breach
         [DataMember] public byte[] PhoneSalt, PhoneKey; [DataMember] public int PhoneIterations;   // v1.2: the phone copy's key (only inside the encrypted vault)
         [DataMember] public List<Item> Trash = new List<Item>();           // v1.3: deleted items, kept (encrypted, in here) for 30 days
-        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); }
+        [DataMember] public List<ItemTemplate> Templates = new List<ItemTemplate>();   // v1.6: your own item templates (layouts, no values)
+        [DataMember] public List<string> ExpiryNotified = new List<string>();          // v1.6: expiry reminders already shown (item|field|date|stage)
+        [OnDeserialized] void Fix(StreamingContext c) { if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); if (Templates == null) Templates = new List<ItemTemplate>(); if (ExpiryNotified == null) ExpiryNotified = new List<string>(); }
     }
 
     public class VaultException : Exception { public VaultException(string m) : base(m) { } }
@@ -69,7 +106,7 @@ namespace HallowKeys
     public class Vault : IDisposable
     {
         static readonly byte[] Magic = Encoding.ASCII.GetBytes("HKVAULT\0");
-        const ushort Version = 1;
+        public const ushort Version = 2, OldestVersion = 1;   // v1.6 writes 2, reads 1 and 2
         public const long MaxFileBytes = 10L * 1024 * 1024;
         public string Path;
         public VaultData Data = new VaultData();
@@ -119,10 +156,11 @@ namespace HallowKeys
 
         // v1.3: an encrypted export with its own password - the same file format (its own random data key and salt, no recovery code),
         // so Restore backup opens it. Only items and folders go in (no trash, no phone key, no leak results).
-        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders)
+        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders) { WriteExport(path, password, items, folders, null); }
+        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders, IEnumerable<ItemTemplate> templates)
         {
             var v = new Vault { Path = path, dataKey = Rng.Bytes(32) };
-            v.Data = new VaultData { Items = items.ToList(), Folders = folders.ToList() };
+            v.Data = new VaultData { Items = items.ToList(), Folders = folders.ToList(), Templates = templates == null ? new List<ItemTemplate>() : templates.ToList() };
             try { v.SetMaster(password); WriteAtomic(path, v.Serialize(), false); }
             finally { Gcm.Wipe(v.dataKey); v.dataKey = null; v.Data = new VaultData(); }
         }
@@ -139,6 +177,7 @@ namespace HallowKeys
             if (b.Length > 64L * 1024 * 1024 * 4) throw new VaultException("The vault file is too big to be a Hallow Keys vault.");
             return b;
         }
+        public ushort FileVersion = Version;   // the format of the file when it was opened (1 = made by 1.5 or older; saved as 2 next time)
         public static Vault OpenBytes(string path, byte[] file, byte[] secret, bool recovery, byte[] givenKey)
         {
             var v = new Vault { Path = path }; int p = 0; int headerEnd; byte[] dataNonce; int clen;
@@ -146,7 +185,7 @@ namespace HallowKeys
             {
                 Func<int, byte[]> take = n => { if (n < 0 || p + n > file.Length) throw new VaultException("bad"); var r = new byte[n]; Buffer.BlockCopy(file, p, r, 0, n); p += n; return r; };
                 if (!take(8).SequenceEqual(Magic)) throw new VaultException("This isn't a Hallow Keys vault.");
-                var ver = BitConverter.ToUInt16(take(2), 0); if (ver != Version) throw new VaultException("This vault was made by a newer Hallow Keys (format " + ver + ").");
+                var ver = BitConverter.ToUInt16(take(2), 0); v.FileVersion = ver; if (ver < OldestVersion || ver > Version) throw new VaultException("This vault was made by a newer Hallow Keys (format " + ver + ").");
                 if (take(1)[0] != 1) throw new VaultException("Unknown key derivation in the vault header.");
                 v.iterations = BitConverter.ToInt32(take(4), 0); int sl = take(1)[0]; v.salt = take(sl);
                 v.masterWrap = take(Gcm.NonceSize + 32 + Gcm.TagSize);

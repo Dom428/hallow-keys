@@ -189,7 +189,7 @@ namespace HallowKeys
                 {
                     var found = v.Data.Items.Where(i => i.Type == kind).OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase).Take(30)
                         .Select(i => (object)(kind == "card"
-                            ? new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", FormData.Brand(i.CardNumber) + " •••• " + FormData.Last4(i.CardNumber) }, { "cvc", i.Cvc.Length > 0 } }
+                            ? new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", FormData.Brand(i.CardNumber) + " \u2022\u2022\u2022\u2022 " + FormData.Last4(i.CardNumber) }, { "cvc", i.Cvc.Length > 0 } }
                             : new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", string.Join(" - ", new[] { i.FullName, i.Email }.Where(x => x.Length > 0)) } })).ToList();
                     return Json(new Dictionary<string, object> { { "ok", true }, { "items", found } });
                 }

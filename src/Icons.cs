@@ -25,8 +25,11 @@ namespace HallowKeys
             { "Use recovery code", "key" }, { "Save file", "download" }, { "Remove", "trash-can" }, { "Copy code", "copy" },
             { "Encrypted export", "file-export" }, { "Plain CSV export", "file-csv" }, { "Restore", "trash-can-arrow-up" }, { "Delete forever", "trash-can" }, { "Empty trash", "trash-can" }, { "Move to trash", "trash-can" },
             { "Show item", "eye" }, { "Keep newest, trash the rest", "clone" }, { "Clear history", "xmark" },
+            { "Duplicate", "clone" }, { "Save as template", "layer-group" }, { "Add field", "plus" }, { "Add website", "link" }, { "\u2191", "arrow-up" }, { "\u2193", "arrow-down" },
+            { "Open Expiring", "hourglass-half" }, { "Rename", "pen" }, { "Delete template", "trash-can" }, { "Clear field history", "xmark" },
         };
-        static readonly string[][] Prefixes = { new[] { "Update to", "download" }, new[] { "Show password history", "clock-rotate-left" }, new[] { "Hide password history", "clock-rotate-left" } };
+        static readonly string[][] Prefixes = { new[] { "Update to", "download" }, new[] { "Show password history", "clock-rotate-left" }, new[] { "Hide password history", "clock-rotate-left" },
+            new[] { "Show field history", "clock-rotate-left" }, new[] { "Hide field history", "clock-rotate-left" }, new[] { "Generate RSA", "key" } };
         public static string ForLabel(string label)
         {
             if (string.IsNullOrEmpty(label)) return null;

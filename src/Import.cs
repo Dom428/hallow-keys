@@ -13,13 +13,13 @@ namespace HallowKeys
 {
     public static class Import
     {
-        public class Result { public List<Item> Items = new List<Item>(); public List<string> Folders = new List<string>(); public int Skipped; public string Source; }
+        public class Result { public List<Item> Items = new List<Item>(); public List<string> Folders = new List<string>(); public List<ItemTemplate> Templates = new List<ItemTemplate>(); public int Skipped; public string Source; }
 
         // RFC 4180: quoted fields, doubled quotes, line breaks inside quotes
         public static List<List<string>> Csv(string text)
         {
             var rows = new List<List<string>>(); var row = new List<string>(); var f = new StringBuilder(); bool q = false;
-            if (text.Length > 0 && text[0] == '﻿') text = text.Substring(1);
+            if (text.Length > 0 && text[0] == '\uFEFF') text = text.Substring(1);
             for (int i = 0; i < text.Length; i++)
             {
                 char c = text[i];
@@ -80,6 +80,14 @@ namespace HallowKeys
                 else if (type == "identity" || (type.Length == 0 && it.FullName.Length > 0 && it.Password.Length == 0)) it.Type = "identity";
                 else if (type == "note" || type == "secure_note" || (type.Length == 0 && it.Password.Length == 0 && it.Username.Length == 0 && it.Urls.Count == 0)) it.Type = "note";
                 else it.Type = "login";
+                // v1.6: Hallow Keys' own CSV - the item's real type and its fields (the readable copy in the note is taken off again)
+                var htype = Col(h, r, "hallow_type"); var hfields = ItemTypes.FromCsvJson(Col(h, r, "hallow_fields"));
+                if (ItemTypes.SafeTypeId(htype) && (ItemTypes.Get(htype) != null || hfields.Count > 0)) it.Type = htype;
+                if (hfields.Count > 0)
+                {
+                    it.Fields = hfields; ItemTypes.Ensure(it);
+                    var cut = it.Notes.IndexOf(ItemTypes.CsvMarker, StringComparison.Ordinal); if (cut >= 0) it.Notes = it.Notes.Substring(0, cut).TrimEnd();
+                }
                 if (it.Title.Length == 0) it.Title = it.Urls.Select(Domain.HostOf).FirstOrDefault(x => x != null) ?? (it.Type == "card" ? "Card" : "Imported item");
                 if (it.Type == "note" && it.Notes.Length == 0) { res.Skipped++; continue; }
                 if (folder.Length > 0 && !res.Folders.Contains(folder)) res.Folders.Add(folder);
@@ -117,6 +125,7 @@ namespace HallowKeys
                 var login = x.ContainsKey("login") ? x["login"] as Dictionary<string, object> : null;
                 var card = x.ContainsKey("card") ? x["card"] as Dictionary<string, object> : null;
                 var idn = x.ContainsKey("identity") ? x["identity"] as Dictionary<string, object> : null;
+                var ssh = x.ContainsKey("sshKey") ? x["sshKey"] as Dictionary<string, object> : null;   // v1.6: Bitwarden's SSH key items (type 5)
                 if (type == 1 && login != null)
                 {
                     it.Type = "login"; it.Username = S(login, "username"); it.Password = S(login, "password"); it.Totp = S(login, "totp");
@@ -132,9 +141,29 @@ namespace HallowKeys
                     it.Type = "identity"; it.FullName = string.Join(" ", new[] { S(idn, "firstName"), S(idn, "middleName"), S(idn, "lastName") }.Where(s => s.Length > 0));
                     it.Email = S(idn, "email"); it.Phone = S(idn, "phone"); it.Address = string.Join(", ", new[] { S(idn, "address1"), S(idn, "address2") }.Where(s => s.Length > 0));
                     it.City = S(idn, "city"); it.PostCode = S(idn, "postalCode"); it.Country = S(idn, "country");
+                    // v1.6: the identity numbers Bitwarden keeps become hidden fields (never searched)
+                    foreach (var k in new[] { new[] { "passportNumber", "Passport number" }, new[] { "licenseNumber", "Licence number" }, new[] { "ssn", "National ID / SSN" } })
+                        if (S(idn, k[0]).Length > 0) it.Fields.Add(new CustomField { Label = k[1], Kind = "hidden", Value = S(idn, k[0]) });
+                    foreach (var k in new[] { new[] { "username", "Username" }, new[] { "company", "Company" }, new[] { "state", "State / county" } })
+                        if (S(idn, k[0]).Length > 0) it.Fields.Add(new CustomField { Label = k[1], Kind = "text", Value = S(idn, k[0]) });
                 }
                 else if (type == 2) it.Type = "note";
+                else if (type == 5 && ssh != null)
+                {
+                    it.Type = "sshkey"; ItemTypes.Ensure(it);
+                    ItemTypes.Set(it, "privateKey", S(ssh, "privateKey")); ItemTypes.Set(it, "publicKey", S(ssh, "publicKey"));
+                    var info = SshKeys.FromItem(S(ssh, "publicKey"), S(ssh, "privateKey"));
+                    ItemTypes.Set(it, "fingerprint", info != null ? info.Fingerprint : S(ssh, "keyFingerprint")); ItemTypes.Set(it, "keyType", info != null ? info.Pretty : "");
+                }
                 else { res.Skipped++; continue; }
+                if (it.Type == "card" && S(card, "brand").Length > 0) it.Fields.Add(new CustomField { Label = "Brand", Kind = "text", Value = S(card, "brand") });
+                // v1.6: Bitwarden's custom fields (0 text, 1 hidden, 2 true/false; linked fields have no value of their own)
+                if (x.ContainsKey("fields") && x["fields"] is System.Collections.ArrayList)
+                    foreach (var f in ((System.Collections.ArrayList)x["fields"]).OfType<Dictionary<string, object>>())
+                    {
+                        int ft = f.ContainsKey("type") && f["type"] is int ? (int)f["type"] : 0; if (ft == 3) continue;
+                        it.Fields.Add(new CustomField { Label = S(f, "name").Length > 0 ? S(f, "name") : "Field", Kind = ft == 1 ? "hidden" : "text", Value = S(f, "value") });
+                    }
                 if (it.Title.Length == 0) it.Title = "Imported item";
                 res.Items.Add(it);
             }
@@ -149,11 +178,13 @@ namespace HallowKeys
             foreach (var f in r.Folders) if (!into.Folders.Contains(f)) into.Folders.Add(f);
             foreach (var it in r.Items)
             {
-                if (into.Items.Any(x => x.Type == it.Type && x.Title == it.Title && x.Username == it.Username && x.Password == it.Password && (x.Urls.FirstOrDefault() ?? "") == (it.Urls.FirstOrDefault() ?? "") && x.CardNumber == it.CardNumber && x.Notes == it.Notes)) continue;
+                if (into.Items.Any(x => x.Type == it.Type && x.Title == it.Title && x.Username == it.Username && x.Password == it.Password && (x.Urls.FirstOrDefault() ?? "") == (it.Urls.FirstOrDefault() ?? "") && x.CardNumber == it.CardNumber && x.Notes == it.Notes && FieldsKey(x) == FieldsKey(it))) continue;
                 if (it.Folder.Length > 0 && !into.Folders.Contains(it.Folder)) into.Folders.Add(it.Folder);
                 into.Items.Add(it); added++;
             }
+            foreach (var t in r.Templates) if (!into.Templates.Any(x => x.Id == t.Id)) into.Templates.Add(t);   // v1.6
             return added;
         }
+        static string FieldsKey(Item i) { return string.Join("\u0001", i.Fields.Where(f => f.Value.Length > 0).Select(f => f.Label + "\u0002" + f.Value).OrderBy(s => s, StringComparer.Ordinal)); }
     }
 }

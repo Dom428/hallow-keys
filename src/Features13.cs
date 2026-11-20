@@ -82,7 +82,7 @@ namespace HallowKeys
             foreach (var w in (query ?? "").Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries))
             {
                 if (w.StartsWith("#") && w.Length > 1) { var t = w.Substring(1); if (!i.Tags.Any(x => x.StartsWith(t, StringComparison.CurrentCultureIgnoreCase))) return false; continue; }
-                var hit = new[] { i.Title, i.Username, i.Folder, i.Notes, i.CardHolder, i.FullName, i.Email, i.Phone, i.City, typeName }.Concat(i.Urls).Concat(i.Tags)
+                var hit = new[] { i.Title, i.Username, i.Folder, i.Notes, i.CardHolder, i.FullName, i.Email, i.Phone, i.City, typeName }.Concat(i.Urls).Concat(i.Tags).Concat(ItemTypes.SearchText(i))   // v1.6: field labels and visible values - never hidden ones
                     .Any(x => x != null && x.IndexOf(w, StringComparison.CurrentCultureIgnoreCase) >= 0);
                 if (!hit) return false;
             }
@@ -113,7 +113,8 @@ namespace HallowKeys
                     var digits = new string(i.CardNumber.Where(char.IsDigit).ToArray());
                     return digits.Length > 0 ? "card|" + digits : "card|t|" + n(i.Title) + "|" + n(i.CardHolder);
                 case "identity": return "identity|" + n(i.FullName) + "|" + n(i.Email) + "|" + n(i.Title);
-                default: return "note|" + n(i.Title) + "|" + i.Notes.Trim();
+                case "note": return "note|" + n(i.Title) + "|" + i.Notes.Trim();
+                default: return ItemTypes.IsNew(i.Type) ? ItemTypes.DuplicateKey(i) : i.Type + "|" + n(i.Title) + "|" + i.Notes.Trim();   // v1.6: the new types by their key fields
             }
         }
         public static List<List<Item>> Duplicates(VaultData d)
@@ -125,24 +126,29 @@ namespace HallowKeys
         // ---- plain CSV export in NordPass's column layout (+ totp, tags), which Hallow Keys, NordPass and most managers import.
         // Text cells that a spreadsheet would run as a formula get a leading ' (Hallow Keys' import takes it off again);
         // secrets (passwords, card numbers, codes) are written exactly as they are.
-        public static readonly string[] CsvColumns = { "name", "url", "additional_urls", "username", "password", "note", "cardholdername", "cardnumber", "cvc", "pin", "expirydate", "zipcode", "folder", "full_name", "phone_number", "email", "address1", "address2", "city", "country", "state", "type", "totp", "tags" };
-        public static string ToCsv(VaultData d)
+        // v1.6: the new types go out as "note" (so other managers import them as secure notes, with the fields written into the note)
+        // plus hallow_type and hallow_fields (the exact fields as JSON) that Hallow Keys reads back. A crypto wallet's recovery phrase
+        // is left out unless includeSeeds (ticked in the export dialog).
+        public static readonly string[] CsvColumns = { "name", "url", "additional_urls", "username", "password", "note", "cardholdername", "cardnumber", "cvc", "pin", "expirydate", "zipcode", "folder", "full_name", "phone_number", "email", "address1", "address2", "city", "country", "state", "type", "totp", "tags", "hallow_type", "hallow_fields" };
+        public static string ToCsv(VaultData d) { return ToCsv(d, false); }
+        public static string ToCsv(VaultData d, bool includeSeeds)
         {
             var sb = new StringBuilder();
             sb.Append(string.Join(",", CsvColumns)).Append("\r\n");
             foreach (var f in d.Folders) { Row(sb, new Dictionary<string, string> { { "name", f }, { "type", "folder" } }); }
             foreach (var i in d.Items)
             {
-                var type = i.Type == "login" ? "password" : i.Type == "card" ? "credit_card" : i.Type;
+                var type = i.Type == "login" ? "password" : i.Type == "card" ? "credit_card" : i.Type == "note" || i.Type == "identity" ? i.Type : "note";
                 Row(sb, new Dictionary<string, string> {
-                    { "name", i.Title }, { "url", i.Urls.FirstOrDefault() ?? "" }, { "additional_urls", string.Join(",", i.Urls.Skip(1)) }, { "username", i.Username }, { "password", i.Password }, { "note", i.Notes },
+                    { "name", i.Title }, { "url", i.Urls.FirstOrDefault() ?? "" }, { "additional_urls", string.Join(",", i.Urls.Skip(1)) }, { "username", i.Username }, { "password", i.Password }, { "note", ItemTypes.CsvNote(i, includeSeeds) },
+                    { "hallow_type", i.Type }, { "hallow_fields", ItemTypes.CsvJson(i, includeSeeds) },
                     { "cardholdername", i.CardHolder }, { "cardnumber", i.CardNumber }, { "cvc", i.Cvc }, { "pin", i.Pin }, { "expirydate", i.Expiry }, { "zipcode", i.PostCode }, { "folder", i.Folder },
                     { "full_name", i.FullName }, { "phone_number", i.Phone }, { "email", i.Email }, { "address1", i.Address }, { "address2", "" }, { "city", i.City }, { "country", i.Country }, { "state", "" },
                     { "type", type }, { "totp", i.Totp }, { "tags", string.Join(",", i.Tags) } });
             }
             return sb.ToString();
         }
-        static readonly HashSet<string> RawColumns = new HashSet<string> { "password", "cardnumber", "cvc", "pin", "totp", "expirydate" };
+        static readonly HashSet<string> RawColumns = new HashSet<string> { "password", "cardnumber", "cvc", "pin", "totp", "expirydate", "hallow_fields" };
         static void Row(StringBuilder sb, Dictionary<string, string> v)
         {
             for (int c = 0; c < CsvColumns.Length; c++)

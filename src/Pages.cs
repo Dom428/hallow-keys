@@ -36,6 +36,7 @@ namespace HallowKeys
             tile("Weak", r.Weak.Count, "#F0BE5A"); tile("Reused", r.Reused.Count, "#F0BE5A"); tile("Old", r.Old.Count, "#A98BE0"); tile("Leaked", r.Leaked.Count, "#FF6B6B");
             sp.Children.Add(tiles);
             HealthExtra(sp);
+            ExpirySection(sp);   // v1.6
             Action<string, List<Item>, Func<Item, string>> list = (head, items, why) =>
             {
                 if (items.Count == 0) return;
@@ -154,7 +155,7 @@ namespace HallowKeys
             if (pw == null) return;
             Vault b = null;
             try { b = Vault.Open(dlg.FileName, pw); } catch (Exception e) { Toast(e.Message, true); return; } finally { Gcm.Wipe(pw); }
-            var r = new Import.Result { Items = b.Data.Items, Folders = b.Data.Folders };
+            var r = new Import.Result { Items = b.Data.Items, Folders = b.Data.Folders, Templates = b.Data.Templates };
             var added = Import.Merge(vault.Data, r); b.Dispose();
             SaveVault(added + " items restored from the backup."); ShowMain();
         }
@@ -176,6 +177,8 @@ namespace HallowKeys
             sp.Children.Add(Card(lk));
             HotkeyCard(sp);
             DesktopFillCard(sp);   // v1.5
+            ExpiryCard(sp);        // v1.6
+            TemplatesCard(sp);     // v1.6
             // Windows Hello
             var wh = new StackPanel();
             wh.Children.Add(new TextBlock { Text = "Windows Hello", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 4) });
@@ -323,14 +326,18 @@ namespace HallowKeys
             try { p = System.Runtime.InteropServices.Marshal.SecureStringToGlobalAllocUnicode(ss); var ch = new char[ss.Length]; System.Runtime.InteropServices.Marshal.Copy(p, ch, 0, ch.Length); var b = System.Text.Encoding.UTF8.GetBytes(ch); Array.Clear(ch, 0, ch.Length); return b; }
             finally { if (p != IntPtr.Zero) System.Runtime.InteropServices.Marshal.ZeroFreeGlobalAllocUnicode(p); ss.Dispose(); }
         }
-        public static byte[] Password(Window owner, string title, string text)
+        public static byte[] Password(Window owner, string title, string text) { bool x; return Password(owner, title, text, null, out x); }
+        // v1.6: with an optional tick box (unticked to start), e.g. "include recovery phrases" for the CSV export
+        public static byte[] Password(Window owner, string title, string text, string tick, out bool ticked)
         {
             StackPanel sp; var w = Shell(owner, title, out sp);
             sp.Children.Add(new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 6) });
             var pb = new PasswordBox { Style = (Style)Application.Current.FindResource("Pwd") }; sp.Children.Add(pb);
+            CheckBox cb = null;
+            if (tick != null) { cb = new CheckBox { Content = new TextBlock { Text = tick, TextWrapping = TextWrapping.Wrap }, IsChecked = false, Style = (Style)Application.Current.FindResource("Switch"), Margin = new Thickness(0, 10, 0, 0) }; sp.Children.Add(cb); }
             sp.Children.Add(Buttons(w, () => pb.SecurePassword.Length > 0));
             w.Loaded += (s, e) => pb.Focus();
-            var r = w.ShowDialog() == true ? Utf8(pb) : null; pb.Clear(); return r;
+            var r = w.ShowDialog() == true ? Utf8(pb) : null; pb.Clear(); ticked = r != null && cb != null && cb.IsChecked == true; return r;
         }
         public static byte[] NewPassword(Window owner, string title)
         {

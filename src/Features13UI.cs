@@ -29,6 +29,7 @@ namespace HallowKeys
             view = "all"; selected = vault.Data.Items[0]; showHistory = true; ShowMain(); save(this, "history.png"); showHistory = false;
             view = "tag:games"; lastSearch = ""; ShowMain(); save(this, "tag.png");
             view = "all"; lastSearch = "mail"; selected = null; ShowMain(); save(this, "search.png"); lastSearch = "";
+            SnapExtra16(save);   // v1.6
         }
 
         // ---- the trash
@@ -64,11 +65,11 @@ namespace HallowKeys
                     Organize.DeleteForever(vault.Data, item); SaveVault("Deleted for good."); ShowMain();
                 };
                 bs.Children.Add(rs); bs.Children.Add(df); DockPanel.SetDock(bs, Dock.Right); row.Children.Add(bs);
-                var ic = Icons.Make(TypeIcon.ContainsKey(it.Type) ? TypeIcon[it.Type] : "key", 16, Muted); ic.Margin = new Thickness(0, 0, 12, 0); ic.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(ic);
+                var ic = Icons.Make(ItemTypes.Icon(it.Type), 16, Muted); ic.Margin = new Thickness(0, 0, 12, 0); ic.VerticalAlignment = VerticalAlignment.Center; row.Children.Add(ic);
                 var tx = new StackPanel();
                 tx.Children.Add(new TextBlock { Text = it.Title, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
                 var left = Organize.DaysLeft(it, now);
-                tx.Children.Add(new TextBlock { Text = TypeName[it.Type] + (Subtitle(it).Length > 0 ? "  -  " + Subtitle(it) : "") + "  -  deleted " + (it.Deleted.HasValue ? it.Deleted.Value.ToString("d MMM yyyy") : "") + ", " + (left <= 1 ? "goes tomorrow" : left + " days left"), Foreground = Muted, FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis });
+                tx.Children.Add(new TextBlock { Text = ItemTypes.Name(it.Type) + (Subtitle(it).Length > 0 ? "  -  " + Subtitle(it) : "") + "  -  deleted " + (it.Deleted.HasValue ? it.Deleted.Value.ToString("d MMM yyyy") : "") + ", " + (left <= 1 ? "goes tomorrow" : left + " days left"), Foreground = Muted, FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis });
                 row.Children.Add(tx);
                 sp.Children.Add(Card(row));
             }
@@ -146,19 +147,21 @@ namespace HallowKeys
             if (dlg.ShowDialog(this) != true) return;
             var pw = Ask.NewPassword(this, "Password for this export");
             if (pw == null) return;
-            var items = vault.Data.Items.ToList(); var folders = vault.Data.Folders.ToList(); var path = dlg.FileName;
+            var items = vault.Data.Items.ToList(); var folders = vault.Data.Folders.ToList(); var templates = vault.Data.Templates.ToList(); var path = dlg.FileName;
             IsEnabled = false;
             new System.Threading.Thread(() =>
             {
                 string err = null;
-                try { Vault.WriteExport(path, pw, items, folders); } catch (Exception e) { err = e.Message; } finally { Gcm.Wipe(pw); }
+                try { Vault.WriteExport(path, pw, items, folders, templates); } catch (Exception e) { err = e.Message; } finally { Gcm.Wipe(pw); }
                 Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; if (err != null) Toast("Couldn't save the export: " + err, true); else Toast("Encrypted export saved - Restore backup opens it with the password you just picked."); }));
             }) { IsBackground = true }.Start();
         }
         void ExportCsv()
         {
             if (MessageBox.Show(this, "A CSV export is NOT encrypted.\n\nEvery password, card number, note and 2FA key in your vault will be readable by anyone - and any program - that can open the file. Cloud sync, backups and the Recycle Bin can keep copies of it.\n\nOnly do this to move to another password manager, keep the file off cloud folders, and delete it as soon as you've imported it.\n\nExport everything as plain text?", "Plain CSV export", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            var pw = Ask.Password(this, "Plain CSV export", "Type your master password to confirm it's you:");
+            // v1.6: crypto wallets' recovery phrases stay out unless you tick the box
+            int wallets = vault.Data.Items.Count(i => i.Type == "wallet" && ItemTypes.Val(i, "seed").Length > 0); bool seeds;
+            var pw = Ask.Password(this, "Plain CSV export", "Type your master password to confirm it's you:", wallets > 0 ? "Also put the recovery (seed) phrase" + (wallets == 1 ? " of 1 crypto wallet" : "s of " + wallets + " crypto wallets") + " in the file. Anyone with a recovery phrase can empty that wallet - leave this off unless you really need it." : null, out seeds);
             if (pw == null) return;
             IsEnabled = false;
             new System.Threading.Thread(() =>
@@ -174,7 +177,7 @@ namespace HallowKeys
                     if (dlg.ShowDialog(this) != true) return;
                     try
                     {
-                        var bytes = new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(Organize.ToCsv(vault.Data))).ToArray();
+                        var bytes = new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(Organize.ToCsv(vault.Data, seeds))).ToArray();
                         Vault.WriteAtomic(dlg.FileName, bytes, false); Array.Clear(bytes, 0, bytes.Length);
                         Toast("Exported " + vault.Data.Items.Count + " items as plain text - delete the file as soon as you're done with it.", true);
                     }

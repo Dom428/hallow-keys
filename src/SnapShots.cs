@@ -26,6 +26,27 @@ namespace HallowKeys
             d.Items.Add(new Item { Title = "Example Mail (old)", Type = "login", Username = "me@example.com", Password = "hunter3", Urls = { "https://www.mail.example.com" }, Updated = DateTime.Now.AddDays(-90) });
             var gone = new Item { Title = "Old forum", Type = "login", Username = "player1", Password = "made-up", Urls = { "https://forum.example.org" } };
             d.Items.Add(gone); Organize.MoveToTrash(d, gone, DateTime.Now.AddDays(-12));
+            // v1.6: one of every new type, your own fields on a login, a template (all made up)
+            Func<string, string, string[], Item> mk = (type, title, kv) => { var it = new Item { Type = type, Title = title }; ItemTypes.Ensure(it); for (int i = 0; i + 1 < kv.Length; i += 2) ItemTypes.Set(it, kv[i], kv[i + 1]); d.Items.Add(it); return it; };
+            string priv, pub; SshKeys.GenerateRsa(3072, "made-up@example", out priv, out pub);
+            var info = SshKeys.Describe(SshKeys.PublicBlob(pub));
+            mk("sshkey", "Home server key", new[] { "privateKey", priv, "publicKey", pub, "fingerprint", info.Fingerprint, "keyType", info.Pretty, "passphrase", "made-up-passphrase" });
+            mk("apikey", "Example API", new[] { "username", "key-id-12345", "credential", "sk_test_made_up_0000", "host", "https://api.example.com", "expires", DateTime.Now.AddDays(200).ToString("yyyy-MM-dd") });
+            mk("licence", "Example Studio", new[] { "product", "Example Studio Pro", "version", "5", "key", "XXXX-YYYY-ZZZZ-0000", "name", "Alex Example", "email", "alex@example.com", "bought", "2025-01-10", "expires", DateTime.Now.AddDays(12).ToString("yyyy-MM-dd") });
+            mk("bank", "Everyday account", new[] { "bank", "Example Bank", "holder", "Alex Example", "accountType", "Current", "account", "00000000", "routing", "00-00-00", "iban", "XX00 EXAM 0000 0000 0000 00", "swift", "EXAMXX00" });
+            mk("passport", "Passport", new[] { "name", "Alex Example", "number", "000000000", "country", "Exampleland", "nationality", "Examplish", "birth", "1990-05-01", "issued", "2016-01-20", "expires", DateTime.Now.AddDays(21).ToString("yyyy-MM-dd") });
+            mk("driving", "Driving licence", new[] { "name", "Alex Example", "number", "EXAMP000000AA0AA", "country", "Exampleland", "categories", "B", "expires", DateTime.Now.AddDays(900).ToString("yyyy-MM-dd") });
+            mk("wifi", "Home Wi-Fi", new[] { "ssid", "Example-5G", "password", "made-up-wifi-pass", "security", "WPA3" });
+            mk("server", "Example database", new[] { "host", "db.example.internal", "port", "5432", "username", "app", "password", "made-up-db-pass", "database", "exampledb", "kind", "PostgreSQL" });
+            mk("membership", "Gym", new[] { "org", "Example Gym", "name", "Alex Example", "number", "M-0001", "expires", DateTime.Now.AddDays(-3).ToString("yyyy-MM-dd") });
+            mk("wallet", "Example wallet", new[] { "app", "Example Wallet", "network", "Examplecoin", "address", "exmpl1qmadeupaddress000000", "seed", "made up words only for the picture not a real phrase at all ok", "password", "made-up-pin" });
+            var l = d.Items[3];
+            l.Fields.Add(new CustomField { Label = "Security question", Kind = "text", Value = "First pet" });
+            l.Fields.Add(new CustomField { Label = "Answer", Kind = "hidden", Value = "made-up-answer", Old = { "older-made-up-answer" }, OldDates = { DateTime.Now.AddDays(-30).ToString("o") } });
+            l.Fields.Add(new CustomField { Label = "Authenticator (backup)", Kind = "totp", Value = "JBSWY3DPEHPK3PXP" });
+            l.Fields.Add(new CustomField { Label = "Account renews", Kind = "date", Value = DateTime.Now.AddDays(45).ToString("yyyy-MM-dd"), Expires = true });
+            l.Urls.Add("https://account.battle.net"); l.Urls.Add("https://eu.shop.battle.net");
+            d.Templates.Add(new ItemTemplate { Name = "Game account", Type = "login", Fields = { new CustomField { Label = "Security question", Kind = "text" }, new CustomField { Label = "Answer", Kind = "hidden" } } });
             return d;
         }
         public static void SnapAll(string dir)

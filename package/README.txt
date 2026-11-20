@@ -9,6 +9,16 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.6 - EVERY KIND OF ITEM
+- New item types: SSH key (fingerprint worked out; Generate RSA makes a new key), API credential, software licence, bank account,
+  passport, driving licence, Wi-Fi network, server / database, membership and crypto wallet (the recovery phrase stays hidden,
+  asks before it's shown, isn't searched, and only goes to the phone copy or a CSV export if you allow it).
+- Your own fields on any item (text, hidden, web address, date, 2FA, email, phone) and your own templates (Save as template).
+- Several websites per login - the browser offers it on each one.
+- Expiry dates: an Expiring page, a section in Password Health and a reminder before things run out (Settings > Expiry reminders).
+- Your vault is upgraded when it's next saved; Hallow Keys 1.5 and older can't open it afterwards (they say so instead of losing
+  anything), so don't go back to an older version.
+
 WHAT'S NEW IN 1.5 - AUTOFILL EVERYWHERE
 - Cards and addresses fill in the browser on https pages (a card's security code only after a second click).
 - Suggestions show under the box you click into; two-step sign-ins; sign-ups offered for saving; 2FA codes fill on the next page.
@@ -38,6 +48,8 @@ WHAT'S NEW IN 1.0
 
 WHAT IT DOES
 - Logins, secure notes, cards and identities, with folders, tags, favourites, search and small files
+- SSH keys, API credentials, software licences, bank accounts, passports, driving licences, Wi-Fi networks, servers, memberships
+  and crypto wallets; your own fields and templates; expiry dates with reminders
 - Quick search from anywhere with Ctrl+Shift+Space (off by default since 1.4 - turn it on in Settings)
 - Password history, a trash (30 days to restore) and a duplicate finder
 - A password generator, Password Health (weak, reused, old, leaked) and 2FA codes

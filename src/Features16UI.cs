@@ -32,6 +32,7 @@ namespace HallowKeys
             foreach (var f in ItemTypes.Ordered(it))
             {
                 if (string.IsNullOrEmpty(f.Value)) continue;
+                if (Passkeys.IsKeyField(it, f)) { PasskeyKeyRow(sp); continue; }   // v2.3: never shown or copied
                 var label = string.IsNullOrEmpty(f.Label) ? ItemTypes.KindName[f.Kind] : f.Label;
                 bool seed = ItemTypes.IsSeed(it, f);
                 switch (f.Kind)
@@ -111,6 +112,7 @@ namespace HallowKeys
 
         void DetailExtraButtons(StackPanel sp, Item it)
         {
+            if (it.Type == "passkey") return;   // v2.3: a copy of a passkey would be the same key twice
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
             var dup = new Button { Content = "Duplicate", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0), ToolTip = "A copy of this item (without its history), to change into a similar one" };
             dup.Click += (s, e) =>
@@ -183,6 +185,13 @@ namespace HallowKeys
             foreach (var d in t.Fields)
             {
                 var f = ItemTypes.Field(e, d.Key);
+                if (d.Computed && e.Type == "passkey")   // v2.3: set by the website; the private key is never shown
+                {
+                    Label16(sp, d.Label + " - set when the site made the passkey");
+                    var pv = Passkeys.IsKeyField(e, f) ? "Kept inside your vault - never shown" : f.Value;
+                    sp.Children.Add(new TextBlock { Text = pv.Length > 0 ? pv : "-", FontFamily = new FontFamily("Consolas"), TextWrapping = TextWrapping.Wrap, Foreground = Passkeys.IsKeyField(e, f) ? Muted : (Brush)FindResource("Text") });
+                    continue;
+                }
                 if (d.Computed)
                 {
                     Label16(sp, d.Label + " - worked out from the public key when you save");

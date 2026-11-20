@@ -5,6 +5,8 @@
 // v1.5: cards (checkout forms, split expiry and number boxes, the security code only after a second click or the setting) and
 // addresses; suggestions under the focused box in a closed shadow root (titles and usernames only - nothing secret goes into the
 // page until you pick one); two-step sign-ins; sign-up forms offered for saving.
+// v1.6: passkey autofill - while the site waits for a passkey (mediation "conditional", see webauthn-bridge.js), the suggestions under a
+// username box start with the site's passkeys from Hallow Keys.
 'use strict';
 (function () {
   if (window.__hallowKeysLoaded) return; window.__hallowKeysLoaded = true;
@@ -304,8 +306,8 @@
     ensureHost(); UI.box.replaceChildren(); UI.rows = rows; UI.sel = rows.length ? 0 : -1;
     if (head) { const h = document.createElement('div'); h.className = 'head'; h.textContent = head; UI.box.appendChild(h); }
     rows.forEach((r, i) => {
-      const d = document.createElement('div'); d.className = 'row' + (i === 0 ? ' on' : '');
-      const k = document.createElement('span'); k.className = 'k'; k.textContent = '\u{1F511}'; d.appendChild(k);
+      const d = document.createElement('div'); d.className = 'row' + (i === 0 ? ' on' : ''); d.setAttribute('data-hk', r.hk || 'row-' + i);
+      const k = document.createElement('span'); k.className = 'k'; k.textContent = r.icon || '\u{1F511}'; d.appendChild(k);
       const t = document.createElement('div'); const b = document.createElement('b'); b.textContent = r.title; t.appendChild(b);
       if (r.sub) { const s = document.createElement('small'); s.textContent = r.sub; t.appendChild(s); }
       d.appendChild(t);
@@ -341,10 +343,16 @@
       render('Hallow Keys - 2FA code', rows); return;
     }
     if (kind === 'login') {
+      const PK = window.__hallowKeysPasskeys;   // v1.6: passkey autofill on username boxes
+      if (PK && PK.active() && !(field.type === 'password')) {
+        const pr = await PK.list();
+        if (my !== UI.seq) return;
+        if (pr && pr.ok) (pr.items || []).forEach((it, i) => rows.push({ hk: 'passkey-' + i, icon: '\u{1F464}', title: it.userName || it.displayName || it.title, sub: 'Passkey - ' + it.title, action: async () => { close(); await PK.pick(it.id); } }));
+      }
       if (r.remembered) items = items.slice().sort((a, b) => (b.id === r.remembered) - (a.id === r.remembered));
       items.forEach(it => rows.push({ title: it.title, sub: (it.id === r.remembered ? 'Continue as ' : '') + (it.username || ''), action: async () => { close(); await send({ type: 'inline-fill', id: it.id }); } }));
       if (!rows.length) { if (force) render(null, [{ title: 'No logins for this site', sub: null }]); else close(); return; }
-      render('Hallow Keys', rows); return;
+      render(rows.some(x => x.hk) ? 'Hallow Keys - passkeys and logins' : 'Hallow Keys', rows); return;
     }
     if (kind === 'card') {
       items.forEach(it => rows.push({ title: it.title, sub: it.sub, action: async f => {

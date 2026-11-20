@@ -71,6 +71,11 @@ namespace HallowKeys
             new TypeDef { Id = "wallet", Name = "Crypto wallet", Lower = "crypto wallet", Plural = "Crypto wallets", Icon = "wallet", Sub = new[] { "app", "network" }, Dupe = new[] { "address", "seed" },
                 Fields = new[] { F("app", "Wallet app", "text"), F("network", "Network / coin", "text"), F("address", "Receiving address", "text"), F("seed", "Recovery (seed) phrase", "secretnote"), F("password", "Wallet password / PIN", "hidden") } },
         };
+        // v2.3: passkeys are made by websites (through the extension), never typed in - only the names can be changed
+        public static readonly TypeDef PasskeyType = new TypeDef { Id = "passkey", Name = "Passkey", Lower = "passkey", Plural = "Passkeys", Icon = "fingerprint", Sub = new[] { "userName", "rpId" }, Dupe = new[] { "credentialId" },
+            Fields = new[] { C("rpId", "Website (rpId)"), F("userName", "User name", "text"), F("displayName", "Display name", "text"), C("algorithm", "Key type"), C("credentialId", "Credential ID"), C("userHandle", "User handle"),
+                C("publicKey", "Public key"), new FieldDef("privateKey", "Private key", "hidden") { Computed = true } } };
+        static ItemTypes() { All.Insert(4, PasskeyType); }
         public static TypeDef Get(string id) { return All.FirstOrDefault(t => t.Id == id); }
         public static string Name(string id) { var t = Get(id); return t != null ? t.Name : "Item"; }
         public static string Icon(string id) { var t = Get(id); return t != null ? t.Icon : "shapes"; }
@@ -163,6 +168,7 @@ namespace HallowKeys
         {
             foreach (var f in it.Fields)
             {
+                if (it.Type == "passkey" && (f.Key == "credentialId" || f.Key == "userHandle" || f.Key == "publicKey")) continue;   // v2.3: ids and keys aren't words
                 yield return f.Label;
                 if (!IsHidden(f) && !IsSeed(it, f)) yield return f.Value;
             }

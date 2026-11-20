@@ -70,7 +70,8 @@ namespace HallowKeys
             {
                 c.Connect(2000);
                 var line = Encoding.UTF8.GetBytes(secret + " " + json.Replace("\r", " ").Replace("\n", " ") + "\n"); c.Write(line, 0, line.Length); c.Flush(); Array.Clear(line, 0, line.Length);
-                var r = new StreamReader(c, new UTF8Encoding(false)); var t2 = r.ReadLineAsync(); if (!t2.Wait(5000)) return "{\"ok\":false,\"msg\":\"Hallow Keys didn't answer\"}";
+                var wait = (t as string ?? "").StartsWith("passkey-") ? 130000 : 5000;   // v2.3: a passkey may wait for Windows Hello
+                var r = new StreamReader(c, new UTF8Encoding(false)); var t2 = r.ReadLineAsync(); if (!t2.Wait(wait)) return "{\"ok\":false,\"msg\":\"Hallow Keys didn't answer\"}";
                 return t2.Result ?? "{\"ok\":false}";
             }
         }
@@ -162,6 +163,7 @@ namespace HallowKeys
                     var line = t.Result; int sp = line.IndexOf(' ');
                     var given = sp > 0 ? line.Substring(0, sp) : "";
                     if (!SameSecret(given)) reply = "{\"ok\":false,\"msg\":\"not allowed\"}";
+                    else if (!HelloFirst(line.Substring(sp + 1))) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", "Windows Hello didn't confirm it's you" } });
                     else reply = onUi(() => Answer(line.Substring(sp + 1)));
                 }
                 var b = Encoding.UTF8.GetBytes(reply.Replace("\r", " ").Replace("\n", " ") + "\n"); p.Write(b, 0, b.Length); p.Flush(); Array.Clear(b, 0, b.Length);
@@ -184,6 +186,18 @@ namespace HallowKeys
         public Func<Item, bool> Visible = i => true;
         public Action<string> Used = id => { };
         public Func<string> NewVaultId = () => null;
+        // v2.3: with Windows Hello unlock on, making or using a passkey asks Windows Hello first (on this pipe thread, not the window's)
+        public Func<bool> HelloOn = () => false;
+        public Action<string> Log = s => { };
+        bool HelloFirst(string json)
+        {
+            string type; try { type = S(js.Deserialize<Dictionary<string, object>>(json), "type"); } catch { return true; }
+            if (type != "passkey-get" && type != "passkey-create") return true;
+            if (!HelloOn()) return true;
+            string err; var ok = Hello.Verify(type == "passkey-get" ? "Sign in with a passkey from Hallow Keys" : "Save a passkey in Hallow Keys", out err);
+            Log("passkey: Windows Hello " + (ok ? "ok" : "refused"));
+            return ok;
+        }
         // runs on the window's thread
         public string Answer(string json)
         {
@@ -191,6 +205,7 @@ namespace HallowKeys
             var type = S(m, "type"); var v = vault(); var shown = v == null ? new List<Item>() : v.Data.Items.Where(Visible).ToList();
             if (type == "open") { showApp(); return Json(new Dictionary<string, object> { { "ok", true }, { "running", true } }); }
             if (type == "status") return Json(new Dictionary<string, object> { { "ok", true }, { "running", true }, { "locked", v == null } });
+            if (type.StartsWith("passkey-")) return Json(Passkeys.Answer(type, m, v, shown, Visible, Used, NewVaultId, saved));   // v2.3 (checks the page and rpId before "locked")
             if (v == null) return Json(new Dictionary<string, object> { { "ok", false }, { "running", true }, { "locked", true }, { "msg", "Hallow Keys is locked" } });
             var url = S(m, "url");
             if (Domain.Parse(url) == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not a web page" } });

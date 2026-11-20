@@ -130,6 +130,14 @@ namespace HallowKeys
             try { return ProtectedData.Unprotect(File.ReadAllBytes(FilePath), Entropy, DataProtectionScope.CurrentUser); }
             catch { error = "The saved Windows Hello key can't be read - unlock with your master password and turn Windows Hello on again."; return null; }
         }
+        // v2.3: just "is it you?" (passkeys, when Windows Hello unlock is on) - blocks this thread until answered
+        public static bool Verify(string why, out string error)
+        {
+            error = null;
+            if (Stub != null) return Stub == "ok";
+            try { var op = Windows.Security.Credentials.UI.UserConsentVerifier.RequestVerificationAsync(why); return Wait(op, 120000) == Windows.Security.Credentials.UI.UserConsentVerificationResult.Verified; }
+            catch (Exception e) { error = "Windows Hello didn't work: " + e.Message; return false; }
+        }
         static T Wait<T>(Windows.Foundation.IAsyncOperation<T> op, int ms)
         {
             var t0 = Environment.TickCount;

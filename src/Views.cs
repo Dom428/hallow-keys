@@ -136,6 +136,7 @@ namespace HallowKeys
             Action<Item> start = ni => { ni.Folder = view.StartsWith("folder:") ? view.Substring(7) : ""; ni.Favorite = view == "fav"; if (view.StartsWith("tag:")) ni.Tags.Add(view.Substring(4)); Vaults.Put(ni, Vaults.DefaultFor(vault.Data, curVault, Travel)); StartEdit(ni, true); };
             foreach (var td in ItemTypes.All)
             {
+                if (td.Id == "passkey") continue;   // v2.3: passkeys are made by websites
                 var t = td.Id; var mi = new MenuItem { Header = td.Name, Icon = Icons.Make(td.Icon, 13, Muted) }; mi.Click += (s, e) => start(new Item { Type = t }); m.Items.Add(mi);
                 if (t == "identity") m.Items.Add(new Separator());
             }
@@ -190,6 +191,7 @@ namespace HallowKeys
                 if (spec != null) TotpRow(sp, spec);
                 foreach (var u in it.Urls) UrlRow(sp, u);
                 AppsRow(sp, it);   // v1.5
+                LoginPasskeys(sp, it);   // v2.3
                 HistorySection(sp, it);
             }
             else if (it.Type == "card")
@@ -201,6 +203,7 @@ namespace HallowKeys
                 Field(sp, "Full name", it.FullName, false); Field(sp, "Email", it.Email, false); Field(sp, "Phone", it.Phone, false); Field(sp, "Address", it.Address, false);
                 Field(sp, "City", it.City, false); Field(sp, "Postcode", it.PostCode, false); Field(sp, "Country", it.Country, false);
             }
+            if (it.Type == "passkey") PasskeyHead(sp, it);   // v2.3
             FieldsDetail(sp, it);   // v1.6: the new types' fields and your own fields
             if (it.Notes.Length > 0)
             {

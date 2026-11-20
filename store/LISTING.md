@@ -5,7 +5,7 @@ Use for the Chrome Web Store, Microsoft Edge Add-ons, Opera add-ons and addons.m
 **Name:** Hallow Keys
 
 **Short description (132 characters max):**
-Fill logins, 2FA codes, cards and addresses from Hallow Keys, the password manager that keeps your vault on your own PC.
+Fill logins, 2FA codes, cards and addresses, and sign in with passkeys, from Hallow Keys, the password manager that keeps your vault on your own PC.
 
 **Category:** Productivity (Chrome) / Privacy & Security (Firefox)
 
@@ -19,6 +19,8 @@ Hallow server. This extension connects your browser to the Hallow Keys app runni
 - Logins only on the site they were saved for (exact site or the same main domain; never look-alikes, never an https login on http)
 - 2FA codes, cards (the security code only after a second click) and addresses on secure (https) pages
 - Offers to save new logins and changed passwords after you sign in or sign up
+- Passkeys: saves and uses passkeys kept in Hallow Keys when a secure site asks (its own prompt, a real click needed; the key signs in the
+  app and never reaches the page), with "use another device or the browser's own" always one click away
 - Never fills hidden boxes or boxes inside other sites' frames
 
 Requires the free Hallow Keys app for Windows (https://github.com/Dom428/hallow-keys), running and unlocked. Without it the extension

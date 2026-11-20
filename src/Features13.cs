@@ -137,7 +137,7 @@ namespace HallowKeys
             var sb = new StringBuilder();
             sb.Append(string.Join(",", CsvColumns)).Append("\r\n");
             foreach (var f in d.Folders) { Row(sb, new Dictionary<string, string> { { "name", f }, { "type", "folder" } }); }
-            foreach (var i in d.Items)
+            foreach (var i in d.Items.Where(x => x.Type != "passkey"))   // v2.3: passkeys aren't in CSV (their private keys never leave the app as text; the encrypted export has them)
             {
                 var type = i.Type == "login" ? "password" : i.Type == "card" ? "credit_card" : i.Type == "note" || i.Type == "identity" ? i.Type : "note";
                 Row(sb, new Dictionary<string, string> {

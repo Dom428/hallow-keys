@@ -66,7 +66,7 @@ namespace HallowKeys
         public static void Write(VaultData d)
         {
             if (d.PhoneKey == null || d.PhoneSalt == null) return;
-            var items = d.Items.Select(ItemTypes.PhoneItem).ToList();   // v1.6: new types and your own fields in a form Remote 1.10 already shows (see ItemTypes.PhoneItem)
+            var items = d.Items.Where(i => i.Type != "passkey").Select(ItemTypes.PhoneItem).ToList();   // v2.3: passkeys never go to the phone (their keys sign only in the app).   // v1.6: new types and your own fields in a form Remote 1.10 already shows (see ItemTypes.PhoneItem)
             var json = new JavaScriptSerializer { MaxJsonLength = 64 * 1024 * 1024 }.Serialize(new Dictionary<string, object> { { "made", DateTime.Now.ToString("s") }, { "items", items } });
             var plain = Encoding.UTF8.GetBytes(json);
             try

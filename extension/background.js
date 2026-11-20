@@ -5,6 +5,8 @@
 // v1.5: cards and addresses; two-step sign-ins (the login you picked on the username page is offered first on the password page
 // for 5 minutes, in that tab); the 2FA code filled on the next page after a password fill (same site, same tab, within 2 minutes,
 // once); sign-up forms offered for saving.
+// v1.6: passkeys - the prompt in the page (webauthn-bridge.js) asks for pk-list / pk-get / pk-create after a real click; they go to the
+// app with the address of the frame that asked (never what the page says about itself), https only, top page or same-origin frames.
 'use strict';
 const HOST = 'com.hallow.keys';
 const REMEMBER_MS = 5 * 60 * 1000, TOTP_NEXT_MS = 2 * 60 * 1000;
@@ -93,6 +95,17 @@ async function match(tab, kind) {
   return r;
 }
 
+// v1.6: passkeys. Only strings and short lists of strings go to the app; the app checks the page's address and the rpId again.
+const str = (v, max) => typeof v === 'string' && v.length <= max ? v : '';
+const strs = (v, max) => Array.isArray(v) ? v.filter(x => typeof x === 'string' && x.length <= 1400).slice(0, max) : [];
+async function passkey(msg, url) {
+  if (!isHttps(url)) return { ok: false, error: 'SecurityError', msg: 'Passkeys only work on secure (https) pages' };
+  const q = { url: url, rpId: str(msg.rpId, 253) };
+  if (msg.type === 'pk-list') return await ask(Object.assign(q, { type: 'passkey-list', allow: strs(msg.allow, 64) }));
+  if (msg.type === 'pk-get') return await ask(Object.assign(q, { type: 'passkey-get', id: str(msg.id, 64), challenge: str(msg.challenge, 1400), allow: strs(msg.allow, 64) }));
+  return await ask(Object.assign(q, { type: 'passkey-create', rpName: str(msg.rpName, 256), challenge: str(msg.challenge, 1400), userId: str(msg.userId, 100), userName: str(msg.userName, 256),
+    displayName: str(msg.displayName, 256), algs: strs(msg.algs, 20), exclude: strs(msg.exclude, 64) }));
+}
 async function handle(msg, sender) {
   if (!msg || typeof msg.type !== 'string' || sender.id !== chrome.runtime.id) return null;
   if (msg.type === 'popup-open') return await ask({ type: 'open' });
@@ -126,6 +139,8 @@ async function handle(msg, sender) {
     case 'inline-totp': return await fillTotp(tab, msg.id, frame);
     case 'inline-card': return await fillCard(tab, msg.id, frame, !!msg.cvc);
     case 'inline-identity': return await fillIdentity(tab, msg.id, frame);
+    case 'pk-status': return await ask({ type: 'status' });
+    case 'pk-list': case 'pk-get': case 'pk-create': return await passkey(msg, sender.url);
     case 'otp-ready': {
       // a 2FA box appeared: right after a password fill with a 2FA key, on the same site, in this tab - fill the code once
       const k = 'totpnext-' + tab.id; const p = await store.get(k);

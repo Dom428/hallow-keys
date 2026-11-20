@@ -768,7 +768,7 @@ namespace HallowKeys
             var w7 = new MainWindow(false, true); w7.vault = new Vault { Data = FakeData21() };
             var sk = w7.S; sk.SyncOn = false;
             w7.view = "all"; w7.ShowMain(); big(w7, "v21-main-all.png");
-            foreach (var t in Vaults.Tabs.Where(x => x != "passkey" && x != "all")) { w7.tab = t; w7.otherType = null; w7.ShowMain(); big(w7, "v21-tab-" + t + ".png"); }
+            foreach (var t in Vaults.Tabs.Where(x => x != "all")) { w7.tab = t; w7.otherType = null; w7.ShowMain(); big(w7, "v21-tab-" + t + ".png"); }
             w7.tab = "other"; w7.otherType = "sshkey"; w7.ShowMain(); big(w7, "v21-tab-other-sshkey.png");
             w7.tab = "all"; w7.otherType = null; w7.sortCol = "used"; w7.sortDesc = true; w7.ShowMain(); big(w7, "v21-sort-lastused.png");
             w7.sortCol = "folder"; w7.sortDesc = false; w7.ShowMain(); big(w7, "v21-sort-folder.png");
@@ -792,6 +792,7 @@ namespace HallowKeys
             w7.view = "vaults"; w7.ShowMain(); tall(w7, "v21-travel-vaults.png");
             sk.TravelMode = false;
             var w8 = new MainWindow(false, true); w8.vault = new Vault { Data = FakeData() }; w8.view = "all"; w8.ShowMain(); big(w8, "v21-one-vault.png");
+            SnapExtra23();   // v2.3
         }
         static ImageSource FakeIcon(string seed)
         {

@@ -144,6 +144,7 @@ namespace HallowKeys
         {
             var dlg = new Microsoft.Win32.SaveFileDialog { Title = "Save an encrypted backup", FileName = "Hallow Keys backup " + DateTime.Now.ToString("yyyy-MM-dd") + ".hkbackup", Filter = "Hallow Keys backup (*.hkbackup)|*.hkbackup" };
             if (dlg.ShowDialog(this) != true) return;
+            if (Travel) { Toast("Travel Mode is on - a full backup would copy the hidden vaults too. Turn Travel Mode off first, or export a vault in Import and export.", true); return; }
             try { Vault.WriteAtomic(dlg.FileName, vault.Serialize(), false); Toast("Backup saved - it opens with your master password (and Secret Key) or your recovery code."); }
             catch (Exception e) { Toast("Couldn't save the backup: " + e.Message, true); }
         }
@@ -164,6 +165,7 @@ namespace HallowKeys
             catch (Exception e) { Toast(e.Message, true); Gcm.Wipe(pw); return; }
             finally { Gcm.Wipe(pw); }
             foreach (var it in b.Data.Items) it.Sync = null;   // v2.0: restored items are new changes here
+            Vaults.Adopt(vault.Data, b.Data, Device.Id);   // v2.1: items go back to their vaults (made again here if needed), or to Personal
             var r = new Import.Result { Items = b.Data.Items, Folders = b.Data.Folders, Templates = b.Data.Templates };
             var added = Import.Merge(vault.Data, r); b.Dispose();
             SaveVault(added + " items restored from the backup."); ShowMain();
@@ -174,6 +176,8 @@ namespace HallowKeys
         {
             ScrollViewer sv; var sp = Page("Settings", null, out sv);
             SyncCard(sp);          // v2.0
+            TravelCard(sp);        // v2.1
+            SiteIconsCard(sp);     // v2.1
             var lk = new StackPanel();
             lk.Children.Add(new TextBlock { Text = "Locking", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6) });
             var row = new StackPanel { Orientation = Orientation.Horizontal };

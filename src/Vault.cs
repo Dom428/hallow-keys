@@ -13,6 +13,10 @@
 // v2.0 writes format 3 (see Vault below): Argon2id or PBKDF2 for the master password, the Secret Key mixed in with HKDF-SHA256,
 // a vault id, and per-item sync data (revisions, tombstones) inside the encrypted part. 1.7 refuses format 3 ("made by a newer
 // Hallow Keys"); 2.0 opens formats 1-3, and the first save of an older file keeps it as vault.hkvault.format2.bak (or format1).
+// v2.1 writes format 4 (the same layout as 3): items belong to a vault (Item.VaultId), the vault list (VaultData.Vaults: names, travel-safe)
+// and when each login was last used (VaultData.Usage) are new, inside the encrypted part. 2.0 would keep them when it saves but its sync
+// would drop other PCs' vault lists and last-used times, so 2.0 refuses format 4 (its sync waits: "saved by a newer Hallow Keys") instead.
+// The first save of a 2.0 file keeps it as vault.hkvault.format3.bak.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -82,6 +86,7 @@ namespace HallowKeys
         [DataMember] public List<CustomField> Fields = new List<CustomField>();  // v1.6: the new types' fields and your own fields on any item
         [DataMember] public bool SeedOnPhone;                                    // v1.6: crypto wallet - put the recovery phrase in the phone copy (off unless switched on)
         [DataMember(EmitDefaultValue = false)] public SyncMeta Sync;           // v2.0: this item's revision for sync (see Sync20.cs) - not part of its content
+        [DataMember(EmitDefaultValue = false)] public string VaultId;          // v2.1: the vault it belongs to (null = Personal; see Vaults21.cs). Part of its content: a move is an edit
         [OnDeserialized] void Fix(StreamingContext c)
         {
             if (Urls == null) Urls = new List<string>(); if (Files == null) Files = new List<Attachment>(); if (OldPasswords == null) OldPasswords = new List<string>();
@@ -103,6 +108,8 @@ namespace HallowKeys
         [DataMember] public List<string> ExpiryNotified = new List<string>();          // v1.6: expiry reminders already shown (item|field|date|stage)
         [DataMember] public List<Tombstone> Tombstones = new List<Tombstone>();        // v2.0: items deleted for good (so another PC deletes them too, not brings them back)
         [DataMember(EmitDefaultValue = false)] public byte[] AccountKey;               // v2.0: the Secret Key (only ever inside the encrypted vault), so a PC that's unlocked learns a new one
+        [DataMember(EmitDefaultValue = false)] public List<VaultInfo> Vaults;          // v2.1: your vaults (Personal, Gaming, Work...): name, colour, safe for travel; deleted ones stay as markers
+        [DataMember(EmitDefaultValue = false)] public List<UsageMark> Usage;           // v2.1: when each item was last filled, copied or opened (merged by the latest time, never part of an item's revision)
         [OnDeserialized] void Fix(StreamingContext c) { if (Tombstones == null) Tombstones = new List<Tombstone>(); if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); if (Templates == null) Templates = new List<ItemTemplate>(); if (ExpiryNotified == null) ExpiryNotified = new List<string>(); }
     }
 
@@ -123,7 +130,7 @@ namespace HallowKeys
     public partial class Vault : IDisposable
     {
         static readonly byte[] Magic = Encoding.ASCII.GetBytes("HKVAULT\0");
-        public const ushort Version = 3, OldestVersion = 1;   // v2.0 writes 3, reads 1, 2 and 3
+        public const ushort Version = 4, OldestVersion = 1;   // v2.1 writes 4, reads 1 to 4 (v2.0 wrote 3)
         public const byte KdfPbkdf2 = 1, KdfArgon2id = 2;
         const byte FlagSecretKey = 1, FlagLegacyMaster = 2, FlagLegacyRecovery = 4;
         // Argon2id for new vaults and upgrades: 256 MiB, 4 passes, 4 lanes - about half a second on the PC this was tuned on
@@ -274,10 +281,12 @@ namespace HallowKeys
         // v1.3: an encrypted export with its own password - the same file format (its own random data key, vault id and salt, no recovery code,
         // no Secret Key: only the password you pick opens it), so Restore backup opens it. Only items and folders go in.
         public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders) { WriteExport(path, password, items, folders, null); }
-        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders, IEnumerable<ItemTemplate> templates)
+        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders, IEnumerable<ItemTemplate> templates) { WriteExport(path, password, items, folders, templates, null); }
+        // v2.1: with the vaults the items are in (names and settings), so Restore backup puts them back in the same vaults
+        public static void WriteExport(string path, byte[] password, IEnumerable<Item> items, IEnumerable<string> folders, IEnumerable<ItemTemplate> templates, IEnumerable<VaultInfo> vaults)
         {
             var v = new Vault { Path = path, dataKey = Rng.Bytes(32), vaultId = Rng.Bytes(16), KeepVersions = false, Tracking = false };
-            v.Data = new VaultData { Items = items.ToList(), Folders = folders.ToList(), Templates = templates == null ? new List<ItemTemplate>() : templates.ToList() };
+            v.Data = new VaultData { Items = items.ToList(), Folders = folders.ToList(), Templates = templates == null ? new List<ItemTemplate>() : templates.ToList(), Vaults = vaults == null ? null : vaults.Select(x => x.Clone()).ToList() };
             try { v.SetMaster(password, null, KdfArgon2id); WriteAtomic(path, v.Serialize(), false); }
             finally { Gcm.Wipe(v.dataKey); v.dataKey = null; v.Data = new VaultData(); }
         }

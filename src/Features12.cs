@@ -52,7 +52,7 @@ namespace HallowKeys
         {
             if (weekly == null) { weekly = new DispatcherTimer { Interval = TimeSpan.FromHours(3) }; weekly.Tick += (s, e) => MaybeWeekly(); weekly.Start(); }
             Dispatcher.BeginInvoke(new Action(MaybeWeekly), DispatcherPriority.ApplicationIdle);
-            if (S.PhoneCopy && vault != null && vault.Data.PhoneKey != null) try { PhoneCopy.Write(vault.Data); } catch { }
+            if (S.PhoneCopy && vault != null && vault.Data.PhoneKey != null) try { PhoneCopy.Write(Shown()); } catch { }
         }
         void MaybeWeekly()
         {
@@ -62,7 +62,7 @@ namespace HallowKeys
         }
 
         // ---- phone copy (Hallow Remote)
-        partial void AfterSaveImpl() { if (S.PhoneCopy && vault != null && vault.Data.PhoneKey != null) try { PhoneCopy.Write(vault.Data); } catch { } }
+        partial void AfterSaveImpl() { if (S.PhoneCopy && vault != null && vault.Data.PhoneKey != null) try { PhoneCopy.Write(Shown()); } catch { } }   // v2.1: Travel Mode hides vaults from the phone copy too
         partial void SettingsExtraImpl(StackPanel ap)
         {
             ap.Children.Add(Switch("Phone copy for Hallow Remote (read-only, opens with your master password on your phone - needs Hallow Remote with HTTPS)", S.PhoneCopy && vault != null && vault.Data.PhoneKey != null, v =>
@@ -93,7 +93,7 @@ namespace HallowKeys
         public void PhoneAfterPasswordChange(byte[] newPassword)
         {
             if (!S.PhoneCopy || vault == null) return;
-            try { PhoneCopy.NewKey(vault.Data, newPassword); vault.Save(); PhoneCopy.Write(vault.Data); } catch { }
+            try { PhoneCopy.NewKey(vault.Data, newPassword); vault.Save(); PhoneCopy.Write(Shown()); } catch { }
         }
     }
 }

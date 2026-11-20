@@ -548,6 +548,7 @@ namespace HallowKeys
             var w4 = new MainWindow(false, true); w4.addFolder = @"C:\Users\you\OneDrive\Hallow Keys"; w4.ShowAddDevice(); save(w4, "add-device.png");
             var w5 = new MainWindow(false, true); w5.snapVaultExists = true; w5.snapNeedSk = true; w5.ShowLock(); save(w5, "lock-secret-key.png");
             var w6 = new MainWindow(false, true); w6.snapVaultExists = false; w6.ShowLock(); save(w6, "create-20.png");
+            SnapExtra21();   // v2.1
         }
     }
 }

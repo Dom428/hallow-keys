@@ -168,11 +168,15 @@ namespace HallowKeys
         static bool B(Dictionary<string, object> m, string k) { object o; return m.TryGetValue(k, out o) && o is bool && (bool)o; }
         string Json(object o) { return js.Serialize(o); }
 
+        // v2.1: Travel Mode - the extension only ever sees the vaults this PC shows; fills and 2FA codes count as "used"; new logins go to the right vault
+        public Func<Item, bool> Visible = i => true;
+        public Action<string> Used = id => { };
+        public Func<string> NewVaultId = () => null;
         // runs on the window's thread
         public string Answer(string json)
         {
             Dictionary<string, object> m; try { m = js.Deserialize<Dictionary<string, object>>(json); } catch { return "{\"ok\":false}"; }
-            var type = S(m, "type"); var v = vault();
+            var type = S(m, "type"); var v = vault(); var shown = v == null ? new List<Item>() : v.Data.Items.Where(Visible).ToList();
             if (type == "open") { showApp(); return Json(new Dictionary<string, object> { { "ok", true }, { "running", true } }); }
             if (type == "status") return Json(new Dictionary<string, object> { { "ok", true }, { "running", true }, { "locked", v == null } });
             if (v == null) return Json(new Dictionary<string, object> { { "ok", false }, { "running", true }, { "locked", true }, { "msg", "Hallow Keys is locked" } });
@@ -187,13 +191,13 @@ namespace HallowKeys
                 if (!FormData.IsHttps(url)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Cards and addresses are only filled on secure (https) pages" } });
                 if (type == "match")
                 {
-                    var found = v.Data.Items.Where(i => i.Type == kind).OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase).Take(30)
+                    var found = shown.Where(i => i.Type == kind).OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase).Take(30)
                         .Select(i => (object)(kind == "card"
                             ? new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", FormData.Brand(i.CardNumber) + " \u2022\u2022\u2022\u2022 " + FormData.Last4(i.CardNumber) }, { "cvc", i.Cvc.Length > 0 } }
                             : new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "sub", string.Join(" - ", new[] { i.FullName, i.Email }.Where(x => x.Length > 0)) } })).ToList();
                     return Json(new Dictionary<string, object> { { "ok", true }, { "items", found } });
                 }
-                var it = v.Data.Items.FirstOrDefault(i => i.Id == S(m, "id") && i.Type == type);
+                var it = shown.FirstOrDefault(i => i.Id == S(m, "id") && i.Type == type);
                 if (it == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not found" } });
                 if (type == "card")
                 {
@@ -209,26 +213,26 @@ namespace HallowKeys
             switch (type)
             {
                 case "match":
-                    var list = v.Data.Items.Where(matches).OrderByDescending(i => i.Urls.Any(u => Domain.HostOf(u) == host)).ThenBy(i => i.Title)
+                    var list = shown.Where(matches).OrderByDescending(i => i.Urls.Any(u => Domain.HostOf(u) == host)).ThenBy(i => i.Title)
                         .Select(i => (object)new Dictionary<string, object> { { "id", i.Id }, { "title", i.Title }, { "username", i.Username }, { "totp", Totp.Parse(i.Totp) != null } }).Take(30).ToList();
                     return Json(new Dictionary<string, object> { { "ok", true }, { "items", list } });
                 case "fill":
                 {
-                    var it = v.Data.Items.FirstOrDefault(i => i.Id == S(m, "id"));
+                    var it = shown.FirstOrDefault(i => i.Id == S(m, "id"));
                     if (it == null || !matches(it)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login isn't for this site" } });
-                    var spec = Totp.Parse(it.Totp);
+                    var spec = Totp.Parse(it.Totp); Used(it.Id);
                     return Json(new Dictionary<string, object> { { "ok", true }, { "username", it.Username }, { "password", it.Password }, { "totp", spec == null ? null : Totp.Code(spec, Totp.Now()) } });
                 }
                 case "totp":   // v1.3: only the current 2FA code of one login, only if it matches the page
                 {
-                    var it = v.Data.Items.FirstOrDefault(i => i.Id == S(m, "id"));
+                    var it = shown.FirstOrDefault(i => i.Id == S(m, "id"));
                     if (it == null || !matches(it)) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login isn't for this site" } });
                     var spec = Totp.Parse(it.Totp);
                     if (spec == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "That login has no 2FA code" } });
                     var prev = S(m, "sameSiteAs");   // v1.5: the code right after a password fill - only on the same site as that page
                     if (prev.Length > 0 && (Domain.Parse(prev) == null || Domain.Registrable(Domain.HostOf(prev)) != Domain.Registrable(host) || (Domain.Parse(prev).Scheme == "https" && Domain.Parse(url).Scheme != "https")))
                         return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not the same site" } });
-                    var now = Totp.Now();
+                    var now = Totp.Now(); Used(it.Id);
                     return Json(new Dictionary<string, object> { { "ok", true }, { "totp", Totp.Code(spec, now) }, { "left", spec.Period - now % spec.Period } });
                 }
                 case "save-check":
@@ -236,7 +240,7 @@ namespace HallowKeys
                 {
                     var user = S(m, "username"); var pw = S(m, "password");
                     if (pw.Length == 0 || pw.Length > 1000 || user.Length > 500) return Json(new Dictionary<string, object> { { "ok", false } });
-                    var same = v.Data.Items.FirstOrDefault(i => matches(i) && string.Equals(i.Username, user, StringComparison.OrdinalIgnoreCase));
+                    var same = shown.FirstOrDefault(i => matches(i) && string.Equals(i.Username, user, StringComparison.OrdinalIgnoreCase));
                     var state = same == null ? "new" : same.Password == pw ? "same" : "update";
                     if (type == "save-check") return Json(new Dictionary<string, object> { { "ok", true }, { "state", state } });
                     if (state == "same") return Json(new Dictionary<string, object> { { "ok", true }, { "state", state } });
@@ -244,7 +248,8 @@ namespace HallowKeys
                     else
                     {
                         var u = Domain.Parse(url);
-                        v.Data.Items.Add(new Item { Type = "login", Title = host, Username = user, Password = pw, Urls = { u.Scheme + "://" + u.Authority } });
+                        var ni = new Item { Type = "login", Title = host, Username = user, Password = pw, Urls = { u.Scheme + "://" + u.Authority } };
+                        Vaults.Put(ni, NewVaultId()); v.Data.Items.Add(ni);
                     }
                     saved(state == "new" ? "Saved a new login for " + host + "." : "Updated the password for " + host + ".");
                     return Json(new Dictionary<string, object> { { "ok", true }, { "state", state } });

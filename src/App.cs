@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.0.0.0")]
-[assembly: AssemblyFileVersion("2.0.0.0")]
+[assembly: AssemblyVersion("2.1.0.0")]
+[assembly: AssemblyFileVersion("2.1.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.0";
+        public const string Version = "2.1";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -82,7 +82,7 @@ namespace HallowKeys
         MainWindow(bool hidden, bool snap)
         {
             S = snap ? new KeysSettings() : KeysSettings.Load(); startHidden = hidden;
-            Title = "Hallow Keys"; Width = 1060; Height = 700; MinWidth = 860; MinHeight = 560;
+            Title = "Hallow Keys"; Width = 1240; Height = 740; MinWidth = 980; MinHeight = 580;
             Background = (Brush)FindResource("Bg"); Foreground = (Brush)FindResource("Text"); FontFamily = new FontFamily("Segoe UI"); FontSize = 12.5;
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             try { Icon = AppIcon(); } catch { }
@@ -267,14 +267,14 @@ namespace HallowKeys
         }
         void Unlocked(Vault v)
         {
-            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17(); AfterUnlock20();
+            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17(); AfterUnlock20(); AfterUnlock21();
         }
         partial void OnUnlocked();
         partial void OnLocking();
         public void Lock(string why)
         {
             if (vault == null) return;
-            OnLocking(); StopSync();
+            OnLocking(); StopSync(); Lock21();
             SafeClip.ClearIfOurs();
             vault.Dispose(); vault = null; selected = null; editing = null; showHistory = false; lastSearch = "";
             ShowLock(why); WriteStatus();
@@ -339,7 +339,7 @@ namespace HallowKeys
         {
             var t = Crash.LastTime();
             return Family.Json(new Dictionary<string, object> { { "app", "Keys" }, { "version", Program.Version }, { "updated", Family.Time(DateTime.Now) }, { "running", true },
-                { "locked", vault == null }, { "items", vault == null ? (object)null : vault.Data.Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) },
+                { "locked", vault == null }, { "items", vault == null ? (object)null : Shown().Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) },
                 { "sync", SyncStatus() } });   // v2.0: sync state only - never a path, key or item
         }
         public void WriteStatus() { if (!Snap.On) Family.WriteStatus(StatusJson()); }

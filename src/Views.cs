@@ -22,50 +22,55 @@ namespace HallowKeys
         public void ShowMain()
         {
             if (vault == null) { ShowLock(); return; }
+            Vaults.All(vault.Data); NormalizeView();   // v2.1: Personal is always there; old type views become category tabs
+            detail = null; listPanel = null; search = null;
             var dock = new DockPanel();
-            // ---- sidebar
-            var side = new DockPanel { Width = 230, Background = (Brush)FindResource("Panel") };
+            // ---- sidebar (v2.1: vault switcher, Vault / Favourites / Trash, folders with +, tools at the bottom)
+            var side = new DockPanel { Width = 240, Background = (Brush)FindResource("Panel") };
             var top = new StackPanel { Margin = new Thickness(16, 16, 12, 0) };
             top.Children.Add(TitleRow(20));
             if (pending != null) { var ub = new Button { Content = "Update to v" + pending.Version.ToString(2), Style = St("Accent"), Margin = new Thickness(0, 12, 0, 0), HorizontalAlignment = HorizontalAlignment.Left }; ub.Click += (s, e) => InstallUpdate(); top.Children.Add(ub); }
             UpgradeOffer(top);   // v2.0: a 1.x vault is offered Argon2id + a Secret Key
+            VaultSwitcher(top);  // v2.1
+            TravelBanner(top);   // v2.1
             DockPanel.SetDock(top, Dock.Top); side.Children.Add(top);
             var bottom = new StackPanel { Margin = new Thickness(12, 0, 12, 14) };
             bottom.Children.Add(SyncSidebar());   // v2.0: "Synced 2 min ago"
             var lockBtn = new Button { Content = "Lock now", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Stretch }; lockBtn.Click += (s, e) => Lock("Locked.");
             bottom.Children.Add(lockBtn);
             DockPanel.SetDock(bottom, Dock.Bottom); side.Children.Add(bottom);
-            var nav = new StackPanel { Margin = new Thickness(8, 14, 8, 8) };
-            var items = vault.Data.Items;
+            var nav = new StackPanel { Margin = new Thickness(8, 12, 8, 8) };
+            var scope = Scope(); var items = scope.Items;
             Action<string, string, string, int> navBtn = (id, icon, label, count) =>
             {
                 var b = new Button { Style = St("Nav"), Tag = id == view ? "on" : null, Content = NavContent(icon, label, count) };
-                b.Click += (s, e) => { view = id; selected = null; editing = null; ShowMain(); };
+                b.Click += (s, e) => { view = id; selected = null; editing = null; picked.Clear(); ShowMain(); };
                 nav.Children.Add(b);
             };
-            navBtn("all", "list", "All items", items.Count);
+            navBtn("all", "vault", "Vault", items.Count);
             navBtn("fav", "star", "Favourites", items.Count(i => i.Favorite));
-            navBtn("login", "key", "Logins", items.Count(i => i.Type == "login"));
-            navBtn("note", "note-sticky", "Secure notes", items.Count(i => i.Type == "note"));
-            navBtn("card", "credit-card", "Cards", items.Count(i => i.Type == "card"));
-            navBtn("identity", "id-card", "Identities", items.Count(i => i.Type == "identity"));
-            foreach (var t in ItemTypes.All.Where(x => !x.Legacy)) { var n = items.Count(i => i.Type == t.Id); if (n > 0 || view == t.Id) navBtn(t.Id, t.Icon, t.Plural, n); }   // v1.6: the new types once you have one
-            if (vault.Data.Folders.Count > 0)
-            {
-                nav.Children.Add(new TextBlock { Text = "FOLDERS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
-                foreach (var f in vault.Data.Folders.OrderBy(x => x)) navBtn("folder:" + f, "folder", f, items.Count(i => i.Folder == f));
-            }
-            var tags = Organize.AllTags(vault.Data);
+            navBtn("trash", "trash-can", "Trash", scope.Trash.Count);
+            // folders, with a + to make one
+            var fh = new DockPanel { Margin = new Thickness(10, 12, 4, 2) };
+            var addF = new Button { Style = St("Nav"), Padding = new Thickness(6, 3, 6, 3), Content = Icons.Make("plus", 11, Muted), ToolTip = "New folder" };
+            addF.Click += (s, e) => NewFolder();
+            DockPanel.SetDock(addF, Dock.Right); fh.Children.Add(addF);
+            fh.Children.Add(new TextBlock { Text = "FOLDERS", FontSize = 11, Foreground = Muted, VerticalAlignment = VerticalAlignment.Center });
+            nav.Children.Add(fh);
+            foreach (var f in vault.Data.Folders.OrderBy(x => x, StringComparer.CurrentCultureIgnoreCase)) navBtn("folder:" + f, "folder", f, items.Count(i => i.Folder == f));
+            if (vault.Data.Folders.Count == 0) nav.Children.Add(new TextBlock { Text = "None yet - + makes one.", FontSize = 11.5, Foreground = Muted, Margin = new Thickness(10, 0, 0, 4) });
+            var tags = Organize.AllTags(scope);
             if (tags.Count > 0)
             {
                 nav.Children.Add(new TextBlock { Text = "TAGS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
                 foreach (var t in tags) { var tag = t; navBtn("tag:" + tag, "tag", tag, items.Count(i => Organize.HasTag(i, tag))); }
             }
             nav.Children.Add(new TextBlock { Text = "TOOLS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
+            navBtn("generator", "dice", "Password Generator", -1);
             var watch = WatchReport();   // v1.7: everything Password Health checks
             navBtn("health", "heart-pulse", "Password Health", watch.Rows.Count(x => x.Points > 0));
-            navBtn("expiring", "hourglass-half", "Expiring", Expiry.Soon(vault.Data, DateTime.Now, S.ExpiryDays).Count);   // v1.6
-            navBtn("generator", "dice", "Generator", -1);
+            navBtn("expiring", "hourglass-half", "Expiring", Expiry.Soon(scope, DateTime.Now, S.ExpiryDays).Count);   // v1.6
+            navBtn("vaults", "layer-group", "Vaults and travel", Vaults.Live(vault.Data).Count(v => Vaults.Shown(vault.Data, new Item { VaultId = v.Id }, Travel)));   // v2.1
             navBtn("transfer", "file-import", "Import and export", -1);
             ExtraNav(nav, navBtn);
             navBtn("settings", "gear", "Settings", -1);
@@ -80,33 +85,11 @@ namespace HallowKeys
             else if (view == "transfer") dock.Children.Add(TransferPage());
             else if (view == "settings") dock.Children.Add(SettingsPage());
             else if (view == "expiring") dock.Children.Add(ExpiringPage());
+            else if (view == "vaults") dock.Children.Add(VaultsPage());   // v2.1
             else if (ExtraPage(view, dock)) { }
-            else
-            {
-                var listCol = new DockPanel { Width = 330, Margin = new Thickness(14, 14, 0, 0) };
-                var bar = new DockPanel { Margin = new Thickness(0, 0, 0, 10) };
-                var add = new Button { Content = "New item", Style = St("Accent"), Margin = new Thickness(8, 0, 0, 0) };
-                add.Click += (s, e) => NewItemMenu(add);
-                DockPanel.SetDock(add, Dock.Right); bar.Children.Add(add);
-                search = new TextBox { Style = St("Search"), Text = lastSearch, ToolTip = "Search titles, usernames, sites, folders, tags and notes (every word has to match; #word finds a tag). Ctrl+F" + (S.QuickSearchKey && !hotkeyTaken ? ", or " + S.QuickSearchCombo + " from anywhere" : "") + "." };
-                search.TextChanged += (s, e) => { lastSearch = search.Text; FillList(); };
-                search.KeyDown += (s, e) =>   // Enter opens the best match, Esc clears the search
-                {
-                    if (e.Key == Key.Enter) { var first = Filtered().FirstOrDefault(); if (first != null) { if (selected != first) showHistory = false; selected = first; editing = null; FillList(); ShowDetail(); } e.Handled = true; }
-                    else if (e.Key == Key.Escape && search.Text.Length > 0) { search.Text = ""; e.Handled = true; }
-                };
-                bar.Children.Add(search);
-                DockPanel.SetDock(bar, Dock.Top); listCol.Children.Add(bar);
-                listPanel = new StackPanel();
-                listCol.Children.Add(new ScrollViewer { Content = listPanel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto });
-                DockPanel.SetDock(listCol, Dock.Left); dock.Children.Add(listCol);
-                detail = new Border { Margin = new Thickness(14, 14, 14, 0), Background = (Brush)FindResource("Panel"), CornerRadius = new CornerRadius(12) };
-                dock.Children.Add(detail);
-                FillList(); ShowDetail();
-            }
+            else ListArea(dock);   // v2.1: search, title, category tabs, the sortable table and the details panel
             root.Child = dock;
-        }
-        partial void ExtraNavImpl(StackPanel nav, Action<string, string, string, int> navBtn);
+        }        partial void ExtraNavImpl(StackPanel nav, Action<string, string, string, int> navBtn);
         void ExtraNav(StackPanel nav, Action<string, string, string, int> navBtn) { ExtraNavImpl(nav, navBtn); }
         bool ExtraPage(string v, DockPanel dock) { bool handled = false; ExtraPageImpl(v, dock, ref handled); return handled; }
         partial void ExtraPageImpl(string v, DockPanel dock, ref bool handled);
@@ -116,7 +99,7 @@ namespace HallowKeys
 
         UIElement NavContent(string icon, string label, int count)
         {
-            var d = new DockPanel { Width = 190 };
+            var d = new DockPanel { Width = 186 };
             if (count >= 0) { var c = new TextBlock { Text = count.ToString(), Foreground = Muted, FontSize = 11.5, VerticalAlignment = VerticalAlignment.Center }; DockPanel.SetDock(c, Dock.Right); d.Children.Add(c); }
             var ic = Icons.Make(icon, 14, (Brush)FindResource("Muted")); ic.Margin = new Thickness(0, 0, 10, 0); ic.VerticalAlignment = VerticalAlignment.Center; d.Children.Add(ic);
             d.Children.Add(new TextBlock { Text = label, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
@@ -132,49 +115,13 @@ namespace HallowKeys
         }
         void SaveVault(string msg)
         {
-            try { vault.Save(); saveSeq++; WriteStatus(); AfterSave(); if (msg != null) Toast(msg); if (S.SyncOn) SyncSoon(1500); }
+            try { vault.Save(); saveSeq++; WriteStatus(); AfterSave(); AfterSave21(); if (msg != null) Toast(msg); if (S.SyncOn) SyncSoon(1500); }
             catch (Exception e) { Toast("Couldn't save the vault: " + e.Message, true); }
         }
         partial void AfterSaveImpl();
         void AfterSave() { AfterSaveImpl(); }
 
-        IEnumerable<Item> Filtered()
-        {
-            var items = vault.Data.Items.AsEnumerable();
-            if (view == "fav") items = items.Where(i => i.Favorite);
-            else if (view.StartsWith("folder:")) { var f = view.Substring(7); items = items.Where(i => i.Folder == f); }
-            else if (view.StartsWith("tag:")) { var t = view.Substring(4); items = items.Where(i => Organize.HasTag(i, t)); }
-            else if (TypeName.ContainsKey(view)) items = items.Where(i => i.Type == view);
-            var q = (lastSearch ?? "").Trim();
-            if (q.Length > 0)   // titles, usernames, sites, folders, tags and notes - never passwords; every word has to match
-            {
-                items = items.Where(i => Organize.Matches(i, q, TypeName.ContainsKey(i.Type) ? TypeName[i.Type] : ""));
-                return items.OrderBy(i => Organize.Rank(i, q)).ThenByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase);
-            }
-            return items.OrderByDescending(i => i.Favorite).ThenBy(i => i.Title, StringComparer.CurrentCultureIgnoreCase);
-        }
-        void FillList()
-        {
-            if (listPanel == null) return;
-            listPanel.Children.Clear();
-            var list = Filtered().ToList();
-            if (list.Count == 0) listPanel.Children.Add(new TextBlock { Text = vault.Data.Items.Count == 0 ? "Nothing here yet. Add an item with New item, or import from NordPass in Import and export." : "Nothing matches.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(4, 8, 4, 0) });
-            foreach (var it in list)
-            {
-                var item = it;
-                var b = new Button { Style = St("Nav"), Tag = selected == it ? "on" : null, Padding = new Thickness(10, 7, 10, 7), HorizontalContentAlignment = HorizontalAlignment.Stretch };
-                var d = new DockPanel();
-                var ic = Icons.Make(ItemTypes.Icon(it.Type), 18, B(Program.AccentHex)); ic.Margin = new Thickness(0, 0, 12, 0); ic.VerticalAlignment = VerticalAlignment.Center;
-                d.Children.Add(ic);
-                if (it.Favorite) { var st = Icons.Make("star", 11, B("#F0BE5A")); st.VerticalAlignment = VerticalAlignment.Center; DockPanel.SetDock(st, Dock.Right); d.Children.Add(st); }
-                var tx = new StackPanel();
-                tx.Children.Add(new TextBlock { Text = it.Title, FontWeight = FontWeights.SemiBold, TextTrimming = TextTrimming.CharacterEllipsis });
-                tx.Children.Add(new TextBlock { Text = Subtitle(it), Foreground = Muted, FontSize = 11.5, TextTrimming = TextTrimming.CharacterEllipsis });
-                d.Children.Add(tx); b.Content = d;
-                b.Click += (s, e) => { if (selected != item) showHistory = false; selected = item; editing = null; FillList(); ShowDetail(); };
-                listPanel.Children.Add(b);
-            }
-        }
+        // v2.1: Filtered() and FillList() are in Features21UI.cs (the table)
         static string Subtitle(Item i)
         {
             if (i.Type == "login") return string.Join(" - ", new[] { i.Username, i.Host }.Where(x => !string.IsNullOrEmpty(x)));
@@ -186,7 +133,7 @@ namespace HallowKeys
         void NewItemMenu(Button anchor)
         {
             var m = new ContextMenu();
-            Action<Item> start = ni => { ni.Folder = view.StartsWith("folder:") ? view.Substring(7) : ""; ni.Favorite = view == "fav"; if (view.StartsWith("tag:")) ni.Tags.Add(view.Substring(4)); StartEdit(ni, true); };
+            Action<Item> start = ni => { ni.Folder = view.StartsWith("folder:") ? view.Substring(7) : ""; ni.Favorite = view == "fav"; if (view.StartsWith("tag:")) ni.Tags.Add(view.Substring(4)); Vaults.Put(ni, Vaults.DefaultFor(vault.Data, curVault, Travel)); StartEdit(ni, true); };
             foreach (var td in ItemTypes.All)
             {
                 var t = td.Id; var mi = new MenuItem { Header = td.Name, Icon = Icons.Make(td.Icon, 13, Muted) }; mi.Click += (s, e) => start(new Item { Type = t }); m.Items.Add(mi);
@@ -205,29 +152,36 @@ namespace HallowKeys
         {
             if (totpTimer != null) totpTimer.Stop(); totpTicks.Clear();
             if (detail == null) return;
-            if (editing != null) { detail.Child = Editor(editing); return; }
-            if (selected == null || !vault.Data.Items.Contains(selected)) { selected = null; detail.Child = new TextBlock { Text = "Pick an item on the left.", Foreground = Muted, Margin = new Thickness(20) }; return; }
+            if (editing != null) { ShowDetailPanel(true); detail.Child = Editor(editing); return; }
+            if (selected == null || !vault.Data.Items.Contains(selected) || !IsShown(selected)) { selected = null; detail.Child = null; ShowDetailPanel(false); return; }
+            ShowDetailPanel(true);
             var it = selected;
             var sp = new StackPanel { Margin = new Thickness(22, 18, 22, 18) };
-            var head = new DockPanel { Margin = new Thickness(0, 0, 0, 14) };
-            var btns = new StackPanel { Orientation = Orientation.Horizontal };
+            var head = new StackPanel { Margin = new Thickness(0, 0, 0, 14) };   // v2.1: title, then the buttons under it (the panel is narrower now)
+            var btns = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 10, 0, 0) };
             var fav = new Button { Content = it.Favorite ? "Unfavourite" : "Favourite", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) };
             fav.Click += (s, e) => { it.Favorite = !it.Favorite; it.Updated = DateTime.Now; SaveVault(null); FillList(); ShowDetail(); };
             var ed = new Button { Content = "Edit", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) }; ed.Click += (s, e) => StartEdit(it, false);
             var del = new Button { Content = "Delete", Style = St("Btn"), ToolTip = "Moves it to the trash - you can restore it for " + Organize.TrashDays + " days" };
             del.Click += (s, e) => { TrashItem(it); ShowMain(); };
             btns.Children.Add(fav); btns.Children.Add(ed); btns.Children.Add(del);
-            DockPanel.SetDock(btns, Dock.Right); head.Children.Add(btns);
             var ht = new StackPanel();
-            ht.Children.Add(new TextBlock { Text = it.Title, FontSize = 19, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
-            ht.Children.Add(new TextBlock { Text = ItemTypes.Name(it.Type) + (it.Folder.Length > 0 ? "  -  " + it.Folder : ""), Foreground = Muted });
+            var trow = new DockPanel();
+            var close = new Button { Style = St("Nav"), Padding = new Thickness(7, 5, 7, 5), Content = Icons.Make("xmark", 13, Muted), ToolTip = "Close (Esc)", VerticalAlignment = VerticalAlignment.Top };
+            close.Click += (s, e) => { selected = null; FillList(); ShowDetail(); };
+            DockPanel.SetDock(close, Dock.Right); trow.Children.Add(close);
+            var tile = Tile(it, 40); tile.Margin = new Thickness(0, 0, 12, 0); trow.Children.Add(tile);
+            var tt = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+            tt.Children.Add(new TextBlock { Text = it.Title, FontSize = 19, FontWeight = FontWeights.Bold, TextTrimming = TextTrimming.CharacterEllipsis });
+            tt.Children.Add(new TextBlock { Text = ItemTypes.Name(it.Type) + (it.Folder.Length > 0 ? "  -  " + it.Folder : "") + (Vaults.Several(vault.Data) ? "  -  " + Vaults.Of(vault.Data, it).Name + " vault" : ""), Foreground = Muted, TextTrimming = TextTrimming.CharacterEllipsis });
+            trow.Children.Add(tt); ht.Children.Add(trow);
             if (it.Tags.Count > 0)
             {
                 var tagRow = new WrapPanel { Margin = new Thickness(0, 6, 0, 0) };
                 foreach (var t in it.Tags) { var tag = t; var c = new Button { Content = "#" + tag, Style = St("Btn"), Padding = new Thickness(8, 1, 8, 1), Margin = new Thickness(0, 0, 4, 4), FontSize = 11.5, ToolTip = "Show everything tagged " + tag }; c.Click += (s, e) => { view = "tag:" + tag; lastSearch = ""; ShowMain(); }; tagRow.Children.Add(c); }
                 ht.Children.Add(tagRow);
             }
-            head.Children.Add(ht); sp.Children.Add(head);
+            head.Children.Add(ht); head.Children.Add(btns); sp.Children.Add(head);
             if (it.Type == "login")
             {
                 Field(sp, "Username", it.Username, false);
@@ -259,7 +213,8 @@ namespace HallowKeys
                 foreach (var f in it.Files) { var file = f; var row = new DockPanel { Margin = new Thickness(0, 2, 0, 2) }; var sv = new Button { Content = "Save file", Style = St("Btn") }; sv.Click += (s, e) => SaveAttachment(file); DockPanel.SetDock(sv, Dock.Right); row.Children.Add(sv); row.Children.Add(new TextBlock { Text = f.Name + "  (" + Size(f.Data.Length) + ")", VerticalAlignment = VerticalAlignment.Center }); sp.Children.Add(row); }
             }
             FieldHistorySection(sp, it);   // v1.6
-            sp.Children.Add(new TextBlock { Text = "Changed " + it.Updated.ToString("d MMM yyyy") + (it.Type == "login" && it.Password.Length > 0 ? "  -  password set " + it.PasswordChanged.ToString("d MMM yyyy") : ""), Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 16, 0, 0) });
+            var used = Vaults.LastUsed(vault.Data, it.Id);   // v2.1
+            sp.Children.Add(new TextBlock { Text = "Changed " + it.Updated.ToString("d MMM yyyy") + (it.Type == "login" && it.Password.Length > 0 ? "  -  password set " + it.PasswordChanged.ToString("d MMM yyyy") : "") + "  -  " + (used.HasValue ? "last used " + WhenText(used.Value) : "not used yet"), Foreground = Muted, FontSize = 11, Margin = new Thickness(0, 16, 0, 0), TextWrapping = TextWrapping.Wrap });
             DetailExtraButtons(sp, it);    // v1.6: Duplicate, Save as template
             detail.Child = new ScrollViewer { Content = sp, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
         }
@@ -289,7 +244,7 @@ namespace HallowKeys
             sp.Children.Add(new TextBlock { Text = label, Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
             var row = new DockPanel(); var u = Domain.Parse(url);
             var bs = new StackPanel { Orientation = Orientation.Horizontal };
-            if (u != null) { var open = new Button { Content = "Open", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) }; open.Click += (s, e) => { try { System.Diagnostics.Process.Start(u.AbsoluteUri); } catch { } }; bs.Children.Add(open); }
+            if (u != null) { var open = new Button { Content = "Open", Style = St("Btn"), Margin = new Thickness(0, 0, 6, 0) }; open.Click += (s, e) => { try { System.Diagnostics.Process.Start(u.AbsoluteUri); if (selected != null) MarkUsed(selected); } catch { } }; bs.Children.Add(open); }
             var copy = new Button { Content = "Copy", Style = St("Btn") }; copy.Click += (s, e) => { Clipboard.SetText(url); Toast("Address copied."); }; bs.Children.Add(copy);
             DockPanel.SetDock(bs, Dock.Right); row.Children.Add(bs); row.Children.Add(new TextBlock { Text = url, FontSize = 13.5, VerticalAlignment = VerticalAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis });
             sp.Children.Add(row);
@@ -323,8 +278,10 @@ namespace HallowKeys
             isNew = fresh;
             // edit a copy (every field, including ones this version doesn't know), so Cancel leaves the item as it was
             editing = ItemTypes.Clone(it, false); ItemTypes.Ensure(editing);
-            if (detail == null) { view = it.Type; ShowMain(); }
-            detail.Child = Editor(editing);
+            if (detail == null) { view = "all"; tab = Vaults.TabOfType(it.Type); ShowMain(); }
+            bool wasOpen = detail.Visibility == Visibility.Visible;
+            ShowDetailPanel(true); detail.Child = Editor(editing);
+            if (!wasOpen) FillList();
         }
         List<Action> editorFields = new List<Action>();   // v1.6: the open editor's box readers (run before the editor is rebuilt)
         UIElement Editor(Item e)
@@ -381,6 +338,7 @@ namespace HallowKeys
             TypeFieldsEditor(sp, e);     // v1.6: the new types' own fields
             CustomFieldsEditor(sp, e);   // v1.6: your own fields (any item)
             var notes = text(e.Type == "note" ? "Note" : "Notes", e.Notes, v => e.Notes = v); notes.Style = St("Area"); notes.AcceptsReturn = true;
+            VaultPicker(sp, e, fields);   // v2.1: which vault it is in
             // folder and favourite
             sp.Children.Add(new TextBlock { Text = "Folder (type a new name to make one)", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
             var folder = new TextBox { Style = St("Field"), Text = e.Folder };
@@ -396,7 +354,7 @@ namespace HallowKeys
             sp.Children.Add(new TextBlock { Text = "Tags (separate them with commas)", Foreground = Muted, FontSize = 11.5, Margin = new Thickness(0, 8, 0, 3) });
             var tagBox = new TextBox { Style = St("Field"), Text = string.Join(", ", e.Tags) };
             sp.Children.Add(tagBox); fields.Add(() => e.Tags = Organize.ParseTags(tagBox.Text));
-            var known = Organize.AllTags(vault.Data);
+            var known = Organize.AllTags(Shown());
             if (known.Count > 0)
             {
                 var tchips = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
@@ -445,7 +403,7 @@ namespace HallowKeys
                 if (old != null) vault.Data.Items[vault.Data.Items.IndexOf(old)] = e; else vault.Data.Items.Add(e);
                 selected = e; editing = null; SaveVault("Saved."); ShowMain();
             };
-            cancel.Click += (s, a) => { editing = null; ShowDetail(); };
+            cancel.Click += (s, a) => { editing = null; ShowDetail(); FillList(); };
             bar.Children.Add(save); bar.Children.Add(cancel); sp.Children.Add(bar);
             Dispatcher.BeginInvoke(new Action(() => title.Focus()), DispatcherPriority.Input);
             return new ScrollViewer { Content = sp, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };

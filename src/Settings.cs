@@ -39,6 +39,9 @@ namespace HallowKeys
         [DataMember] public bool SyncOn = false;                     // v2.0: sync through a folder (off until you turn it on)
         [DataMember] public string SyncFolder = "";                  // v2.0: the folder (OneDrive, Google Drive, Dropbox, a NAS, Syncthing...)
         [DataMember] public string LastSync = "";                    // v2.0: when it last synced
+        [DataMember] public bool SiteIcons = false;                  // v2.1: fetch each login's icon from its own site (off until you turn it on)
+        [DataMember] public bool TravelMode = false;                 // v2.1: Travel Mode on this PC (only vaults marked safe for travel are shown)
+        [DataMember] public string TravelSince = "";                 // v2.1: when it was turned on
         [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; SyncOn = false; SyncFolder = ""; LastSync = ""; }
 
         // HALLOW_KEYS_TESTDIR (developer tests only): everything lives in that folder instead, so tests never touch the real vault
@@ -71,6 +74,7 @@ namespace HallowKeys
         [DllImport("user32.dll")] static extern uint GetClipboardSequenceNumber();
         static uint ours; static DispatcherTimer timer;
         public static int ClearSeconds = 20;
+        public static event Action Copied;
         public static bool Copy(string text)
         {
             if (string.IsNullOrEmpty(text)) return false;
@@ -81,6 +85,7 @@ namespace HallowKeys
             d.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)));                      // cloud clipboard: no
             for (int i = 0; i < 5; i++) { try { Clipboard.SetDataObject(d, true); break; } catch { if (i == 4) return false; Thread.Sleep(60); } }
             ours = GetClipboardSequenceNumber();
+            if (Copied != null) try { Copied(); } catch { }   // v2.1: the window counts it as a use of the item shown
             if (timer == null) { timer = new DispatcherTimer(); timer.Tick += (s, e) => { timer.Stop(); ClearIfOurs(); }; }
             timer.Stop(); timer.Interval = TimeSpan.FromSeconds(ClearSeconds); timer.Start();
             return true;

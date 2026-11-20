@@ -31,7 +31,7 @@ namespace HallowKeys
             if (breachStamp != t) { breachData = Watchtower.LoadBreaches(); breachStamp = t; }
             return breachData;
         }
-        Watchtower.Report WatchReport() { return Watchtower.Build(vault.Data, S.OldDays, LeakedIds(), TwoFaData(), BreachData(), S.ExpiryDays, DateTime.Now); }
+        Watchtower.Report WatchReport() { return Watchtower.Build(Shown(), S.OldDays, LeakedIds(), TwoFaData(), BreachData(), S.ExpiryDays, DateTime.Now); }
         string pendingPassword;   // "New password": put into the editor's password box (so the old one goes to the history on Save)
 
         UIElement WatchPage()

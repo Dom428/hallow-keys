@@ -52,7 +52,7 @@ namespace HallowKeys
             var fg = fgApi.Get();   // what's in front right now, before Keys does anything
             var appData = KeysSettings.TestDir ?? Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
             var game = DesktopFill.ReadGameState(appData, DateTime.Now);
-            var d = DesktopFill.Decide(vault == null ? null : vault.Data, fg, WinForeground.SelfElevated(), game, System.Diagnostics.Process.GetCurrentProcess().Id);
+            var d = DesktopFill.Decide(vault == null ? null : Shown(), fg, WinForeground.SelfElevated(), game, System.Diagnostics.Process.GetCurrentProcess().Id);
             TestLog("desktop fill: " + d.Refusal + (d.Refusal == FillRefusal.None ? " " + d.Matches.Count + " match" + (d.Matches.Count == 1 ? "" : "es") : ""));
             if (d.Refusal == FillRefusal.Locked)
             {
@@ -73,14 +73,14 @@ namespace HallowKeys
         }
         void TypeInto(Item it, ForegroundInfo fg)
         {
-            var copy = new Item { Username = it.Username, Password = it.Password, Apps = it.Apps.ToList() };
+            var copy = new Item { Username = it.Username, Password = it.Password, Apps = it.Apps.ToList() }; var usedId = it.Id;
             bool self = WinForeground.SelfElevated(); var api = fgApi; var t = typer; var m = mods;
             new System.Threading.Thread(() =>
             {
                 FillRefusal r;
                 try { r = DesktopFill.TypeLogin(copy, fg, self, api, t, m); } catch { r = FillRefusal.TypingBlocked; }
                 copy.Password = null; copy.Username = null;
-                Dispatcher.BeginInvoke(new Action(() => { TestLog("desktop fill typed: " + r); if (r != FillRefusal.None) Notify("Hallow Keys", DesktopFill.Say(r)); }));
+                Dispatcher.BeginInvoke(new Action(() => { TestLog("desktop fill typed: " + r); if (r != FillRefusal.None) Notify("Hallow Keys", DesktopFill.Say(r)); else MarkUsedId(usedId); }));
             }) { IsBackground = true }.Start();
         }
 

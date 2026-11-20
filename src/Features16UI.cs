@@ -322,7 +322,7 @@ namespace HallowKeys
         {
             ScrollViewer sv; var sp = Page("Expiring", "Cards, passports, driving licences, memberships, software licences, API credentials and your own date fields marked as expiry dates. " +
                 (S.ExpiryReminders ? "You get a reminder " + S.ExpiryDays + " days before (Settings > Expiry reminders)." : "Reminders are off (Settings > Expiry reminders)."), out sv);
-            var all = Expiry.All(vault.Data, DateTime.Now);
+            var all = Expiry.All(Shown(), DateTime.Now);
             if (all.Count == 0) { sp.Children.Add(new TextBlock { Text = "Nothing with an expiry date yet.", Foreground = Muted }); return sv; }
             Action<string, IEnumerable<ExpiryEntry>, string> group = (head, es, color) =>
             {
@@ -349,7 +349,7 @@ namespace HallowKeys
         // in Password Health
         void ExpirySection(StackPanel sp)
         {
-            var soon = Expiry.Soon(vault.Data, DateTime.Now, S.ExpiryDays);
+            var soon = Expiry.Soon(Shown(), DateTime.Now, S.ExpiryDays);
             var box = new StackPanel();
             var head = new DockPanel();
             var open = new Button { Content = "Open Expiring", Style = St("Btn") }; open.Click += (s, e) => { view = "expiring"; ShowMain(); };
@@ -374,7 +374,7 @@ namespace HallowKeys
         void CheckExpiry()
         {
             if (vault == null || !S.ExpiryReminders) return;
-            var msg = Expiry.DueMessage(vault.Data, DateTime.Now, S.ExpiryDays);
+            var msg = Expiry.DueMessage(Shown(), DateTime.Now, S.ExpiryDays);
             if (msg == null) return;
             SaveVault(null);
             TestLog("expiry notify: " + msg);

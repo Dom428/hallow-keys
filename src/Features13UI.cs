@@ -14,8 +14,7 @@ namespace HallowKeys
     {
         partial void ExtraNav2(StackPanel nav, Action<string, string, string, int> navBtn)
         {
-            navBtn("duplicates", "clone", "Duplicates", Organize.Duplicates(vault.Data).Sum(g => g.Count - 1));
-            navBtn("trash", "trash-can", "Trash", vault.Data.Trash.Count);
+            navBtn("duplicates", "clone", "Duplicates", Organize.Duplicates(Shown()).Sum(g => g.Count - 1));   // v2.1: Trash moved up, next to Vault and Favourites
         }
         partial void ExtraPage2(string v, DockPanel dock, ref bool handled)
         {
@@ -42,7 +41,7 @@ namespace HallowKeys
         UIElement TrashPage()
         {
             ScrollViewer sv; var sp = Page("Trash", "Deleted items wait here for " + Organize.TrashDays + " days, still encrypted in your vault, then they're removed for good. They don't fill in the browser, count in Password Health or go to the phone copy.", out sv);
-            var trash = vault.Data.Trash; var now = DateTime.Now;
+            var trash = Scope().Trash; var now = DateTime.Now;   // v2.1: only what this PC shows (Travel Mode) and the vault picked in the sidebar
             if (trash.Count == 0) { sp.Children.Add(new TextBlock { Text = "The trash is empty.", Foreground = Muted }); return sv; }
             var empty = new Button { Content = "Empty trash", Style = St("Btn"), HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 10) };
             empty.Click += (s, e) =>
@@ -86,7 +85,7 @@ namespace HallowKeys
         UIElement DuplicatesPage()
         {
             ScrollViewer sv; var sp = Page("Duplicates", "The same account saved more than once: logins for the same site and username, cards with the same number, notes with the same title and text, identities with the same name and email. Extra copies go to the trash, so you can still restore them.", out sv);
-            var groups = Organize.Duplicates(vault.Data);
+            var groups = Organize.Duplicates(Shown());
             if (groups.Count == 0) { sp.Children.Add(new TextBlock { Text = "No duplicates.", Foreground = B("#6ED28C") }); return sv; }
             foreach (var g in groups)
             {
@@ -147,20 +146,21 @@ namespace HallowKeys
             if (dlg.ShowDialog(this) != true) return;
             var pw = Ask.NewPassword(this, "Password for this export");
             if (pw == null) return;
-            var items = vault.Data.Items.ToList(); var folders = vault.Data.Folders.ToList(); var templates = vault.Data.Templates.ToList(); var path = dlg.FileName;
+            var ed = ExportData(); var items = ed.Items.ToList(); var folders = vault.Data.Folders.ToList(); var templates = vault.Data.Templates.ToList(); var path = dlg.FileName;   // v2.1: one vault, or every vault this PC shows
+            var vlist = Vaults.For(vault.Data, items); var what = ExportWhat();
             IsEnabled = false;
             new System.Threading.Thread(() =>
             {
                 string err = null;
-                try { Vault.WriteExport(path, pw, items, folders, templates); } catch (Exception e) { err = e.Message; } finally { Gcm.Wipe(pw); }
-                Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; if (err != null) Toast("Couldn't save the export: " + err, true); else Toast("Encrypted export saved - Restore backup opens it with the password you just picked."); }));
+                try { Vault.WriteExport(path, pw, items, folders, templates, vlist); } catch (Exception e) { err = e.Message; } finally { Gcm.Wipe(pw); }
+                Dispatcher.BeginInvoke(new Action(() => { IsEnabled = true; if (err != null) Toast("Couldn't save the export: " + err, true); else Toast("Encrypted export of " + what + " saved (" + items.Count + " items) - Restore backup opens it with the password you just picked."); }));
             }) { IsBackground = true }.Start();
         }
         void ExportCsv()
         {
             if (MessageBox.Show(this, "A CSV export is NOT encrypted.\n\nEvery password, card number, note and 2FA key in your vault will be readable by anyone - and any program - that can open the file. Cloud sync, backups and the Recycle Bin can keep copies of it.\n\nOnly do this to move to another password manager, keep the file off cloud folders, and delete it as soon as you've imported it.\n\nExport everything as plain text?", "Plain CSV export", MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
             // v1.6: crypto wallets' recovery phrases stay out unless you tick the box
-            int wallets = vault.Data.Items.Count(i => i.Type == "wallet" && ItemTypes.Val(i, "seed").Length > 0); bool seeds;
+            int wallets = ExportData().Items.Count(i => i.Type == "wallet" && ItemTypes.Val(i, "seed").Length > 0); bool seeds;
             var pw = Ask.Password(this, "Plain CSV export", "Type your master password to confirm it's you:", wallets > 0 ? "Also put the recovery (seed) phrase" + (wallets == 1 ? " of 1 crypto wallet" : "s of " + wallets + " crypto wallets") + " in the file. Anyone with a recovery phrase can empty that wallet - leave this off unless you really need it." : null, out seeds);
             if (pw == null) return;
             IsEnabled = false;
@@ -177,9 +177,9 @@ namespace HallowKeys
                     if (dlg.ShowDialog(this) != true) return;
                     try
                     {
-                        var bytes = new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(Organize.ToCsv(vault.Data, seeds))).ToArray();
+                        var bytes = new System.Text.UTF8Encoding(true).GetPreamble().Concat(System.Text.Encoding.UTF8.GetBytes(Organize.ToCsv(ExportData(), seeds))).ToArray();
                         Vault.WriteAtomic(dlg.FileName, bytes, false); Array.Clear(bytes, 0, bytes.Length);
-                        Toast("Exported " + vault.Data.Items.Count + " items as plain text - delete the file as soon as you're done with it.", true);
+                        Toast("Exported " + ExportData().Items.Count + " items (" + ExportWhat() + ") as plain text - delete the file as soon as you're done with it.", true);
                     }
                     catch (Exception e) { Toast("Couldn't save: " + e.Message, true); }
                 }));

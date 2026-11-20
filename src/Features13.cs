@@ -49,6 +49,7 @@ namespace HallowKeys
             it.Deleted = null;
             if (d.Items.Any(x => x.Id == it.Id)) it.Id = Guid.NewGuid().ToString("N");
             if (it.Folder.Length > 0 && !d.Folders.Contains(it.Folder)) d.Folders.Add(it.Folder);
+            Vaults.FixRestored(d, it);   // v2.1: back to Personal if its vault was deleted
             d.Items.Add(it);
         }
         public static int DaysLeft(Item it, DateTime now) { return it.Deleted == null ? TrashDays : Math.Max(0, TrashDays - (int)Math.Floor((now - it.Deleted.Value).TotalDays)); }

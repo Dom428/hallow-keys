@@ -65,6 +65,9 @@ namespace HallowKeys
                 Fields = new[] { F("host", "Host / address", "text"), F("port", "Port", "text"), F("username", "Username", "text"), F("password", "Password", "hidden"), F("database", "Database", "text"), new FieldDef("kind", "Type", "text") { Hint = "SSH, PostgreSQL, MySQL..." }, F("url", "Admin page", "url") } },
             new TypeDef { Id = "membership", Name = "Membership", Lower = "membership", Plural = "Memberships", Icon = "address-card", Sub = new[] { "org", "name" }, Dupe = new[] { "org", "number" },
                 Fields = new[] { F("org", "Organisation", "text"), F("name", "Member name", "text"), F("number", "Member number", "text"), F("pin", "PIN / password", "hidden"), F("since", "Member since", "date"), Exp("expires", "Expires"), F("phone", "Phone", "phone"), F("url", "Website", "url") } },
+            // v2.1: a document - its files (scans, PDFs) are the point; a few fields to find it again
+            new TypeDef { Id = "document", Name = "Document", Lower = "document", Plural = "Documents", Icon = "file-lines", Sub = new[] { "kind", "number" }, Dupe = new[] { "kind", "number" },
+                Fields = new[] { new FieldDef("kind", "Kind of document", "text") { Hint = "Contract, insurance policy, certificate..." }, F("number", "Reference number", "text"), F("issuer", "Issued by", "text"), F("issued", "Issued on", "date"), Exp("expires", "Expires") } },
             new TypeDef { Id = "wallet", Name = "Crypto wallet", Lower = "crypto wallet", Plural = "Crypto wallets", Icon = "wallet", Sub = new[] { "app", "network" }, Dupe = new[] { "address", "seed" },
                 Fields = new[] { F("app", "Wallet app", "text"), F("network", "Network / coin", "text"), F("address", "Receiving address", "text"), F("seed", "Recovery (seed) phrase", "secretnote"), F("password", "Wallet password / PIN", "hidden") } },
         };

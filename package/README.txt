@@ -9,6 +9,22 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.1 - NORDPASS LOOK, PLUS VAULTS
+- A new main screen: search bar (Ctrl+F), Create item, category tabs (All items, Logins, Secure notes, Cards, Contact info,
+  Documents, Other) and a table you can sort by Title, Last used, Folder and Modified. Tick boxes (or Ctrl/Shift+click, Space,
+  Ctrl+A) to move several items to a folder or vault, tag, favourite or trash them at once. Details open on the right.
+- Last used: when a login was filled, copied or opened on its site - kept inside your encrypted vault only.
+- Site icons (off by default, Settings > Site icons): each login's icon from its own https site, never through another
+  service; otherwise a coloured letter. Kept encrypted next to the vault.
+- A Document item type; the Documents tab also shows items with files attached.
+- Several vaults: Personal, plus your own (Gaming, Work, Shared...). Switch at the top of the sidebar, move items, export one
+  vault, delete a vault to the trash (and restore it). They sync with your other PCs like everything else.
+- Travel Mode (Vaults and travel): only vaults marked "Safe for travel" stay on this PC's screen, extension, autofill, phone
+  copy and exports until you turn it off with your master password. It hides, it doesn't remove: the hidden items are still
+  inside the encrypted vault file on this PC (unlike 1Password, which takes them off the device).
+- The vault is upgraded when it's next saved; Hallow Keys 2.0 can't open it afterwards (it says so, and its sync waits instead of
+  writing over it), so update every PC that syncs. The 2.0 file is kept next to it as vault.hkvault.format3.bak.
+
 WHAT'S NEW IN 2.0 - SYNC BETWEEN YOUR PCS (NO HALLOW SERVER)
 - Settings > Sync: pick a folder that OneDrive, Google Drive, Dropbox, a NAS or Syncthing keeps in step, turn sync on, and your
   PCs share one vault. Changes merge item by item; if the same item changed on two PCs, both versions are kept (one as a

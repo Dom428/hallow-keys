@@ -11,6 +11,7 @@ namespace HallowKeys
     {
         partial void ExtraInit()
         {
+            Init21();   // v2.1: list keys, copies count as "used"
             if (KeysSettings.TestDir == null) return;
             var pw = Environment.GetEnvironmentVariable("HALLOW_KEYS_TEST_UNLOCK");
             if (string.IsNullOrEmpty(pw)) return;

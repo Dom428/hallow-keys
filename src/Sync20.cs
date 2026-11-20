@@ -190,6 +190,8 @@ namespace HallowKeys
             var ids = new HashSet<string>(outItems.Keys);
             local.Data.LeakedIds = local.Data.LeakedIds.Union(remote.Data.LeakedIds).Where(ids.Contains).Distinct().ToList();
             foreach (var e in remote.Data.ExpiryNotified) if (!local.Data.ExpiryNotified.Contains(e)) local.Data.ExpiryNotified.Add(e);
+            Vaults.Merge(local.Data, remote.Data);                 // v2.1: the vault list (each vault's latest change wins)
+            Vaults.MergeUsage(local.Data, remote.Data, ids);       // v2.1: last used (the latest time of each item)
             if (local.Data.PhoneKey == null && remote.Data.PhoneKey != null && remote.Data.PhoneSalt != null) { local.Data.PhoneKey = (byte[])remote.Data.PhoneKey.Clone(); local.Data.PhoneSalt = (byte[])remote.Data.PhoneSalt.Clone(); local.Data.PhoneIterations = remote.Data.PhoneIterations; }
             rep.KeysAdopted = local.AdoptKeysFrom(remote);
             var after = Digest(local.Data);
@@ -260,6 +262,7 @@ namespace HallowKeys
             sb.Append('|').Append(string.Join(",", d.Templates.Select(t => t.Id).OrderBy(x => x, StringComparer.Ordinal)));
             sb.Append('|').Append(string.Join(",", d.LeakedIds.OrderBy(x => x, StringComparer.Ordinal)));
             sb.Append('|').Append(d.ExpiryNotified.Count).Append('|').Append(d.PhoneKey != null);
+            sb.Append('|').Append(Vaults.Digest(d));   // v2.1
             return sb.ToString();
         }
     }

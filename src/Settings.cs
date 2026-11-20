@@ -34,7 +34,9 @@ namespace HallowKeys
         [DataMember] public string DesktopFillCombo = "";            // v1.5: its shortcut - none until you pick one, so nothing is grabbed
         [DataMember] public bool ExpiryReminders = true;             // v1.6: a tray notification before cards, passports, licences... expire
         [DataMember] public int ExpiryDays = 30;                     // v1.6: how many days before
-        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; }
+        [DataMember] public bool WatchWeekly = false;                // v1.7: download the breached-sites and 2FA lists weekly (off: only on click)
+        [DataMember] public string LastWatchUpdate = "";             // v1.7
+        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; }
 
         // HALLOW_KEYS_TESTDIR (developer tests only): everything lives in that folder instead, so tests never touch the real vault
         public static string TestDir { get { var t = Environment.GetEnvironmentVariable("HALLOW_KEYS_TESTDIR"); return string.IsNullOrEmpty(t) ? null : t; } }

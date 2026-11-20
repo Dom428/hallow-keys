@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("1.6.0.0")]
-[assembly: AssemblyFileVersion("1.6.0.0")]
+[assembly: AssemblyVersion("1.7.0.0")]
+[assembly: AssemblyFileVersion("1.7.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "1.6";
+        public const string Version = "1.7";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -252,7 +252,7 @@ namespace HallowKeys
         }
         void Unlocked(Vault v)
         {
-            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16();
+            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17();
         }
         partial void OnUnlocked();
         partial void OnLocking();

@@ -9,6 +9,14 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your recovery sheet.
 
+WHAT'S NEW IN 1.7 - WATCHTOWER-LEVEL HEALTH
+- Password Health has one security score (out of 100, the formula is on the page) and a "Fix these first" list with
+  one-click fixes: the site's change-password page, a new password, how to add 2FA, switch to https.
+- New checks: sites breached since you set the password, sites that offer 2FA you haven't set up, http addresses,
+  expired / expiring items, and old passwords after a period you pick (Settings > Password Health).
+- The breached-sites and 2FA lists are public lists downloaded whole - only when you click "Download the lists" (or weekly
+  if you turn that on) - and checked on your PC. Nothing about your logins is ever sent.
+
 WHAT'S NEW IN 1.6 - EVERY KIND OF ITEM
 - New item types: SSH key (fingerprint worked out; Generate RSA makes a new key), API credential, software licence, bank account,
   passport, driving licence, Wi-Fi network, server / database, membership and crypto wallet (the recovery phrase stays hidden,
@@ -52,7 +60,7 @@ WHAT IT DOES
   and crypto wallets; your own fields and templates; expiry dates with reminders
 - Quick search from anywhere with Ctrl+Shift+Space (off by default since 1.4 - turn it on in Settings)
 - Password history, a trash (30 days to restore) and a duplicate finder
-- A password generator, Password Health (weak, reused, old, leaked) and 2FA codes
+- A password generator, Password Health (a security score; weak, reused, old, leaked, breached sites, 2FA available, http) and 2FA codes
 - Check for leaked passwords (Password Health) - only a short hash prefix leaves your PC
 - A read-only copy on your phone through Hallow Remote (Settings > Phone copy; needs Remote's HTTPS)
 - Import from NordPass (Settings > Export items gives a CSV), other CSV exports and Bitwarden JSON

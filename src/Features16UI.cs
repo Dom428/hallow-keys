@@ -436,6 +436,7 @@ namespace HallowKeys
             view = "settings"; ShowMain(); tall(this, "settings-16.png");
             view = "sshkey"; selected = null; ShowMain(); save(this, "nav-sshkeys.png");
             view = "all"; lastSearch = "wallet"; selected = null; ShowMain(); save(this, "search-wallet.png"); lastSearch = "";
+            SnapExtra17(save);   // v1.7
         }
     }
 }

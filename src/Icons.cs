@@ -26,6 +26,7 @@ namespace HallowKeys
             { "Encrypted export", "file-export" }, { "Plain CSV export", "file-csv" }, { "Restore", "trash-can-arrow-up" }, { "Delete forever", "trash-can" }, { "Empty trash", "trash-can" }, { "Move to trash", "trash-can" },
             { "Show item", "eye" }, { "Keep newest, trash the rest", "clone" }, { "Clear history", "xmark" },
             { "Duplicate", "clone" }, { "Save as template", "layer-group" }, { "Add field", "plus" }, { "Add website", "link" }, { "\u2191", "arrow-up" }, { "\u2193", "arrow-down" },
+            { "Change on site", "globe" }, { "New password", "dice" }, { "Add 2FA", "shield-halved" }, { "Use https", "lock" }, { "Download the lists", "download" },
             { "Open Expiring", "hourglass-half" }, { "Rename", "pen" }, { "Delete template", "trash-can" }, { "Clear field history", "xmark" },
         };
         static readonly string[][] Prefixes = { new[] { "Update to", "download" }, new[] { "Show password history", "clock-rotate-left" }, new[] { "Hide password history", "clock-rotate-left" },

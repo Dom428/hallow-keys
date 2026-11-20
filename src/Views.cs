@@ -60,8 +60,8 @@ namespace HallowKeys
                 foreach (var t in tags) { var tag = t; navBtn("tag:" + tag, "tag", tag, items.Count(i => Organize.HasTag(i, tag))); }
             }
             nav.Children.Add(new TextBlock { Text = "TOOLS", FontSize = 11, Foreground = Muted, Margin = new Thickness(10, 12, 0, 4) });
-            var rep = Health.Check(vault.Data, S.OldDays, LeakedIds());
-            navBtn("health", "heart-pulse", "Password Health", rep.Weak.Count + rep.Reused.Count + rep.Leaked.Count);
+            var watch = WatchReport();   // v1.7: everything Password Health checks
+            navBtn("health", "heart-pulse", "Password Health", watch.Rows.Count(x => x.Points > 0));
             navBtn("expiring", "hourglass-half", "Expiring", Expiry.Soon(vault.Data, DateTime.Now, S.ExpiryDays).Count);   // v1.6
             navBtn("generator", "dice", "Generator", -1);
             navBtn("transfer", "file-import", "Import and export", -1);
@@ -73,7 +73,7 @@ namespace HallowKeys
             toast = new TextBlock { Margin = new Thickness(16, 6, 16, 8), Foreground = B("#6ED28C"), TextTrimming = TextTrimming.CharacterEllipsis };
             DockPanel.SetDock(toast, Dock.Bottom); dock.Children.Add(toast);
             // ---- pages
-            if (view == "health") dock.Children.Add(HealthPage(rep));
+            if (view == "health") dock.Children.Add(WatchPage());
             else if (view == "generator") dock.Children.Add(GeneratorPage(null));
             else if (view == "transfer") dock.Children.Add(TransferPage());
             else if (view == "settings") dock.Children.Add(SettingsPage());
@@ -360,6 +360,7 @@ namespace HallowKeys
                 showP.Click += (s, a) => { bool vis = tb.Visibility == Visibility.Visible; tb.Visibility = vis ? Visibility.Collapsed : Visibility.Visible; pb.Visibility = vis ? Visibility.Visible : Visibility.Collapsed; showP.Content = vis ? "Show" : "Hide"; };
                 gen.Click += (s, a) => { var p = S.GenWords ? Generator.Passphrase(S.GenWordCount, "-", true, true) : Generator.Password(S.GenLength, S.GenLower, S.GenUpper, S.GenDigits, S.GenSymbols, S.GenAvoid); pb.Password = p; tb.Text = p; rate(p); };
                 rate(e.Password);
+                if (pendingPassword != null) { var np0 = pendingPassword; pendingPassword = null; pb.Password = np0; tb.Text = np0; rate(np0); }   // v1.7: "New password" from Password Health
                 fields.Add(() => { var np = pb.Password; if (np != e.Password) { Organize.RecordOldPassword(e, e.Password, DateTime.Now); e.Password = np; e.PasswordChanged = DateTime.Now; } });
                 UrlsEditor(sp, e, fields);   // v1.6: several websites, one box each
                 text("2FA (an otpauth:// link or the setup key)", e.Totp, v => e.Totp = v);

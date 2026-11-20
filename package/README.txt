@@ -9,6 +9,13 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.5 - EMERGENCY ACCESS
+- The Emergency Kit is a full sheet now: Secret Key, recovery code, blanks to fill in, and plain-language restore steps.
+- Emergency packages (Sharing > Emergency access): an encrypted copy of the vaults you pick that only a trusted contact's
+  Hallow Keys can open - and, if you tick it (on by default), only together with your recovery code. They open it with
+  "Open an emergency package". It's a copy as of today: make a new one now and then.
+- Not possible without a server: "release to my contact after N days unless I say no". Hallow Keys has no server.
+
 WHAT'S NEW IN 2.4 - SHARING (NO SERVER)
 - New Sharing page. Your member card (a short code with a fingerprint) is what others need to add you.
 - Shared vaults: one file in a folder you share with family or a team (shared OneDrive/Dropbox folder, NAS). Each member runs

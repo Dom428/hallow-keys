@@ -386,10 +386,30 @@ namespace HallowKeys
                 var tb = new TextBlock { TextWrapping = TextWrapping.Wrap, FontSize = 12, Foreground = black, Margin = new Thickness(0, 0, 0, 6) };
                 tb.Inlines.Add(new System.Windows.Documents.Run(h + " ") { FontWeight = FontWeights.Bold }); tb.Inlines.Add(new System.Windows.Documents.Run(t)); sp.Children.Add(tb);
             };
-            step("A new PC:", "install Hallow Keys, click \"Open a synced vault\", pick the sync folder, and type your master password and this Secret Key.");
-            step("Forgot the master password:", "on the lock screen click \"Forgot it? Use your recovery code\" and type the recovery code. It opens the vault without the Secret Key; then you pick a new master password.");
-            step("Lost this PC:", "your vault is still in the sync folder (and in any backups) - a new PC opens it as above.");
-            step("Keep it safe:", "anyone with the recovery code and your vault file can open it. The Secret Key alone can't - it only stops someone with a copy of your vault file from guessing your master password.");
+            // v2.5: the full layout - what each thing is, where you keep it, and the restore steps in plain words
+            Action<string> section = t => sp.Children.Add(new TextBlock { Text = t, FontSize = 13.5, FontWeight = FontWeights.Bold, Foreground = black, Margin = new Thickness(0, 10, 0, 6) });
+            Action<string> line = t => sp.Children.Add(new TextBlock { Text = t, FontSize = 12, Foreground = black, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 5) });
+            section("Where I keep things (fill in by hand)");
+            line("This kit is kept: ____________________________________________");
+            line("My master password is: only in my head / written down at: ____________________");
+            line("Encrypted backups (.hkbackup) are at: ____________________________________");
+            line("My emergency contact (has an emergency package from me): ______________________");
+            section("If I get a new PC, or this one breaks");
+            step("1.", "Install Hallow Keys from github.com/Dom428/hallow-keys (the zip, then INSTALL.bat).");
+            step("2.", "On the first screen click \"Open a synced vault\" and pick the sync folder written above.");
+            step("3.", "Type your master password and the Secret Key from this sheet. Everything comes back, including passkeys and shared vaults.");
+            step("No sync folder?", "Click \"Restore backup\" instead and pick your latest .hkbackup file; it needs the master password (and this Secret Key) or the recovery code.");
+            section("If I forget my master password");
+            step("1.", "On the lock screen click \"Forgot it? Use your recovery code\".");
+            step("2.", "Type the recovery code from this sheet. It opens the vault even without the Secret Key.");
+            step("3.", "Pick a new master password straight away, then print a new Emergency Kit (Settings) and destroy this one.");
+            section("If someone I trust needs to get in");
+            step("With an emergency package:", "they open it on their own Hallow Keys (Sharing > Open an emergency package); if I made it need my recovery code, they also need the code above.");
+            step("Without one:", "they need this sheet, my vault file or sync folder, and the recovery code - which is why this sheet must be kept as safe as a house key.");
+            section("Keep it safe");
+            line("Anyone with the recovery code and your vault file can open your vault. The Secret Key alone can't - it only stops someone who copies your vault file from guessing your master password.");
+            line("Keep this on paper, offline: a safe, a locked drawer, with your will. Not as a photo, not in email, not in the cloud. A newer kit replaces this one.");
+            line("Hallow Keys has no company or server behind it: nobody can reset your password for you. This sheet is the way back in.");
             return sp;
         }
 

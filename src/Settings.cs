@@ -42,7 +42,15 @@ namespace HallowKeys
         [DataMember] public bool SiteIcons = false;                  // v2.1: fetch each login's icon from its own site (off until you turn it on)
         [DataMember] public bool TravelMode = false;                 // v2.1: Travel Mode on this PC (only vaults marked safe for travel are shown)
         [DataMember] public string TravelSince = "";                 // v2.1: when it was turned on
-        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; SyncOn = false; SyncFolder = ""; LastSync = ""; }
+        [DataMember] public bool SshAgentOn = false;                 // v2.6: the SSH agent (off until you turn it on)
+        [DataMember] public bool SshOwnPipe = false;                 // v2.6: serve Hallow Keys' own pipe instead of Windows' standard one
+        [DataMember] public System.Collections.Generic.List<string> SshKeyIds = new System.Collections.Generic.List<string>();   // v2.6: the SSH key items on offer (ids only)
+        [DataMember] public int ApproveMinutes = 10;                 // v2.6: the prompt offers "don't ask again for N minutes" for that program (0 = never offered)
+        [DataMember] public bool ApproveWithHello = false;           // v2.6: approve with Windows Hello instead of the prompt
+        [DataMember] public bool CliOn = false;                      // v2.6: the command line (--get, --env, --run) may ask (off until you turn it on)
+        [DataMember] public bool PhoneEdit = false;                  // v2.7: the phone may send changes back (separate from the read-only phone copy)
+        [OnDeserializing] void D(StreamingContext c) { AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; SyncOn = false; SyncFolder = ""; LastSync = ""; SshKeyIds = new System.Collections.Generic.List<string>(); ApproveMinutes = 10; }
+        [OnDeserialized] void After26(StreamingContext c) { if (SshKeyIds == null) SshKeyIds = new System.Collections.Generic.List<string>(); }
 
         // HALLOW_KEYS_TESTDIR (developer tests only): everything lives in that folder instead, so tests never touch the real vault
         public static string TestDir { get { var t = Environment.GetEnvironmentVariable("HALLOW_KEYS_TESTDIR"); return string.IsNullOrEmpty(t) ? null : t; } }

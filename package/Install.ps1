@@ -6,7 +6,7 @@ New-Item -ItemType Directory -Force $dest | Out-Null
 Get-Process HallowKeys -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Milliseconds 500
 Copy-Item (Join-Path $PSScriptRoot 'HallowKeys.exe') $dest -Force
-foreach ($f in 'README.txt', 'Uninstall.ps1', 'FontAwesome-LICENSE.txt') { Copy-Item (Join-Path $PSScriptRoot $f) $dest -Force -ErrorAction SilentlyContinue }
+foreach ($f in 'hk.exe', 'README.txt', 'Uninstall.ps1', 'FontAwesome-LICENSE.txt') { Copy-Item (Join-Path $PSScriptRoot $f) $dest -Force -ErrorAction SilentlyContinue }
 foreach ($x in 'extension', 'extension-firefox') { if (Test-Path (Join-Path $PSScriptRoot $x)) { Remove-Item (Join-Path $dest $x) -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item (Join-Path $PSScriptRoot $x) $dest -Recurse -Force } }
 $exe = Join-Path $dest 'HallowKeys.exe'
 $u = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\HallowKeys'

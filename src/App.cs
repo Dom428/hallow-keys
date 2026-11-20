@@ -20,20 +20,21 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.5.0.0")]
-[assembly: AssemblyFileVersion("2.5.0.0")]
+[assembly: AssemblyVersion("2.6.0.0")]
+[assembly: AssemblyFileVersion("2.6.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.5";
+        public const string Version = "2.6";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
         {
             // v1.1: started by a browser as the native messaging host (no window, nothing else)
             if (args.Contains("--native-host") || args.Any(a => a.StartsWith("chrome-extension://", StringComparison.OrdinalIgnoreCase)) || args.Contains(NativeHost.FirefoxId) || (args.Length >= 2 && args[0].EndsWith(".json", StringComparison.OrdinalIgnoreCase))) return NativeHost.Run(args);   // v1.5: Firefox passes the manifest path, then the add-on ID
+            if (CliClient.IsCli(args)) return CliClient.Run(args, true);   // v2.6: --get / --env / --run (asks the running app)
             int ci = Array.IndexOf(args, "--cmd");
             if (ci >= 0) return Family.RunCmd(ci + 1 < args.Length ? args[ci + 1] : "");
             int si = Array.IndexOf(args, "--snap");
@@ -274,7 +275,7 @@ namespace HallowKeys
         public void Lock(string why)
         {
             if (vault == null) return;
-            OnLocking(); StopSync(); Lock21();
+            OnLocking(); StopSync(); Lock21(); Lock26();
             SafeClip.ClearIfOurs();
             vault.Dispose(); vault = null; selected = null; editing = null; showHistory = false; lastSearch = "";
             ShowLock(why); WriteStatus();
@@ -297,7 +298,7 @@ namespace HallowKeys
             tray.MouseClick += (s, e) => { if (e.Button == WF.MouseButtons.Left) ShowFromTray(); };
         }
         public void ShowFromTray() { Show(); if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal; Activate(); }
-        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } StopHotkey(); StopDesktopFill(); StopSync(); OnQuit(); Application.Current.Shutdown(); }
+        void Quit() { exiting = true; Lock("Locked."); if (tray != null) { tray.Visible = false; tray.Dispose(); } StopHotkey(); StopDesktopFill(); StopSync(); OnQuit(); Quit26(); Application.Current.Shutdown(); }
         partial void OnQuit();
 
         // pipe commands: never any item data

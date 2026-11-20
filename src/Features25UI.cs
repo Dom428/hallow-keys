@@ -100,6 +100,7 @@ namespace HallowKeys
             w.view = "sharing"; w.ShowMain(); Snap.Save(w, Path.Combine(snapDir, "v25-sharing-emergency.png"), 1280, 1500);
             w.MakeEmergency();
             w.ShowEmergencyKit("ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-2345-6789", "HK-ABCDEF-GHJKLM-NPQRST-UVWXYZ-2345", "v25");
+            SnapExtra26(w);   // v2.6
         }
     }
 }

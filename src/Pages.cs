@@ -191,6 +191,7 @@ namespace HallowKeys
             sp.Children.Add(Card(lk));
             HotkeyCard(sp);
             DesktopFillCard(sp);   // v1.5
+            DevToolsCard(sp);      // v2.6: SSH agent, command line, Activity
             HealthSettingsCard(sp); // v1.7
             ExpiryCard(sp);        // v1.6
             TemplatesCard(sp);     // v1.6

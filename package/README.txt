@@ -9,6 +9,18 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.6 - DEVELOPER TOOLS
+- Settings > Developer tools (both off until you turn them on, only while Hallow Keys is unlocked):
+- SSH agent: tick the SSH keys to offer; Windows' ssh, ssh-add, ssh-keygen and git find them on Windows' standard agent pipe.
+  Every use asks first (a small prompt naming the program and key, optional "don't ask again for N minutes", or Windows Hello).
+  Ed25519, RSA and ECDSA keys in OpenSSH format without a passphrase. If Windows' OpenSSH Authentication Agent service is
+  running, Hallow Keys uses its own pipe instead and shows the line to point ssh at it (it never changes the service).
+- Git: git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe ; for signed commits also gpg.format ssh,
+  gpg.ssh.program C:/Windows/System32/OpenSSH/ssh-keygen.exe, user.signingkey "key::<public key line>", commit.gpgsign true.
+- Command line (hk.exe in Hallow Keys' folder): hk --get "<item>" [--field ...], hk --env <template> [--out <new file>]
+  ({{hk:item/field}} placeholders), hk --run -- <command> (variables set to hk:item/field are filled in). Each use asks first.
+  Exit codes: 0 ok, 1 usage, 2 not running, 3 locked, 4 not found, 5 not allowed, 6 turned off, 7 other.
+
 WHAT'S NEW IN 2.5 - EMERGENCY ACCESS
 - The Emergency Kit is a full sheet now: Secret Key, recovery code, blanks to fill in, and plain-language restore steps.
 - Emergency packages (Sharing > Emergency access): an encrypted copy of the vaults you pick that only a trusted contact's

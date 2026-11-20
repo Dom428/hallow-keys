@@ -4,6 +4,7 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 
 > **Not audited.** Hallow Keys hasn't been reviewed by security experts. Keep using a tried-and-tested password manager for anything that matters, and keep backups.
 
+- **Developer tools** (2.6) - an **SSH agent** that serves the SSH keys in your vault to Windows' ssh, git and anything else using Windows' OpenSSH (each use approved in a small prompt or with Windows Hello; Ed25519, RSA and ECDSA keys; git commit signing with SSH keys), and a **command line** (`hk --get`, `hk --env`, `hk --run`) that puts secrets into scripts and `.env` files - every use approved, only while unlocked; both off until you turn them on
 - **Passkeys** (2.3) - sign in to websites with passkeys kept in your vault: the extension answers the site's passkey request with Hallow Keys' own prompt (save, pick, or hand it to your phone / security key / the browser), the key signs in the app and never reaches the page, and passkeys sync with the rest of the vault; passkey autofill in the suggestions under the username box
 - **Logins, secure notes, cards, identities, documents** with folders, **tags**, favourites, search and small encrypted file attachments (up to 10 MB each), in a sortable table with category tabs (All items, Logins, Passkeys, Secure notes, Cards, Contact info, Documents, Other), **Last used**, site icons or coloured letter tiles, and tick boxes to move, tag or delete several items at once
 - **Emergency access** (2.5) - an **emergency package** for someone you trust: an encrypted copy of the vaults you pick that only their Hallow Keys can open (optionally only together with your recovery code), and a full printable **Emergency Kit** with plain-language restore steps
@@ -28,6 +29,7 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 
 ## What's new
 
+- **2.6 - Developer tools** - **Settings > Developer tools**. **SSH agent**: turn it on, tick the SSH keys to offer, and Windows' own `ssh`, `ssh-add`, `ssh-keygen` and git find them on Windows' standard agent pipe (`\\.\pipe\openssh-ssh-agent`) - no set-up. Every signature is approved first in a small prompt naming the program and the key ("ssh.exe (from git.exe) wants to use your SSH key ...") with an optional "don't ask again for N minutes" for that program, or with **Windows Hello** if you pick that; nothing is served while Hallow Keys is locked. Ed25519 (RFC 8032, written for Hallow Keys and checked against the RFC's test vectors and OpenSSH), RSA (rsa-sha2-256 / 512 - never SHA-1) and ECDSA P-256 / 384 / 521 keys in OpenSSH's format; keys with a passphrase are not offered (the app says why). If Windows' **OpenSSH Authentication Agent** service is running, Hallow Keys doesn't fight it or change it: it explains and serves its own pipe (`\\.\pipe\hallow-keys-ssh-agent`) with the `SSH_AUTH_SOCK` / `IdentityAgent` line to copy. **Git commit signing** with an SSH key works through the agent (see below). **Command line**: `hk.exe` (and `HallowKeys.exe`) `--get "<item>" [--field ...]`, `--env <template> [--out <new file>]` to fill `{{hk:item/field}}` placeholders and `--run -- <command>` to start a command with secrets in its environment - each use shows a prompt naming the calling program and the items, only while unlocked, never logged. An **Activity** list in Settings shows what was asked (never a secret).
 - **2.5 - Emergency access** - The **Emergency Kit** is now a full sheet: your Secret Key and recovery code, blanks to fill in by hand (where the kit, your backups and your emergency contact are), and plain-language steps for a new PC, a forgotten master password and someone you trust needing to get in. **Emergency packages** (Sharing > Emergency access): an encrypted copy of the vaults you pick, made for a trusted contact's member card so only their Hallow Keys can open it; tick **Also needs my recovery code** (on by default) and the file is useless without your recovery code too - keep the code where they can get it only when it's needed (a sealed envelope, a safe, a solicitor). Your code is checked against your vault when you make the package and never stored. They open it with **Open an emergency package**: the items go into a new vault "From <your name>" in their Hallow Keys. A package is a copy as of the day you make it, so make a new one now and then. **Not offered:** "release it to them after N days unless I say no" (NordPass, Bitwarden) - that needs a server that waits and asks you, and Hallow Keys has none.
 - **2.4 - Sharing (no server)** - A new **Sharing** page. **Your member card** is a short code (or a .hkmember file) with your name and a public key, plus a **fingerprint** to read out to the other person so nobody can swap it. **Shared vaults**: make one in a folder you share with others (a shared OneDrive / Dropbox / Google Drive folder or a NAS), add members with their member cards, and put copies of items in with **Share > Copy into the shared vault**. Each member's Hallow Keys opens the shared vault with their own key and merges everyone's changes item by item, like sync between your own PCs (edits on two PCs at once keep a conflict copy, an edit beats a delete). **Removing a member** gives the shared vault a new key they don't have, so they can't read anything added or changed afterwards - but they may have kept copies of what they could already see, and the app says so. **One item as a file**: open an item, **Share > As an encrypted file**: a .hkshare file locked with a generated passphrase and an expiry (1-90 days); send the file and the passphrase by different routes; the other person clicks **Open a shared item file**. Hallow Keys refuses an expired file, but it can't make a copy forget itself - anyone who keeps the file and the passphrase could still read it with other software. Passkeys can't be shared. A Hallow Remote link for a shared item needs a Hallow Remote update and isn't there yet.
 - **2.3 - Passkeys** - Hallow Keys now keeps **passkeys**. When a website asks to make or use a passkey, the browser extension (1.6 - reload it on your browser's extensions page after updating) shows **Hallow Keys' own prompt** in the corner of the page: **Save passkey in Hallow Keys**, pick one of your passkeys for that site, or **Use another device or the browser's own** (your phone, a security key or Windows Hello, exactly as before). Sites that offer **passkey autofill** get your passkeys at the top of the suggestions under the username box. Passkeys are a new item type on the **Passkeys** tab (site, user name, when it was made and last used) and are listed with the login for the same site; they sync, go to the trash and come back like any item, and they're in encrypted exports and backups. The private key **never leaves the app**: it's never shown, copied, put in the page, the phone copy or a CSV export (CSV exports leave passkeys out - use the encrypted export to move them). If Hallow Keys is locked the prompt says so, offers to open it and carries on once it's unlocked; if it isn't running, the browser's own passkey handling takes over. With **Windows Hello** unlock on, saving or using a passkey asks Windows Hello first. Importing passkeys from other password managers isn't possible yet - the standard for moving them (FIDO's Credential Exchange Format) isn't final. **Update every PC that syncs to 2.3 before you save passkeys**: 2.2 and older show them as an unknown item and would put the key in their CSV export and phone copy.
@@ -42,6 +44,48 @@ A personal password manager for Windows - part of the Hallow family with [Hallow
 - **1.2** - Check for leaked passwords (Have I Been Pwned - only a 5-character hash prefix leaves your PC), shown in Password Health; an optional read-only phone copy you open in Hallow Remote's Keys tab (needs Remote's HTTPS).
 - **1.1** - Browser autofill for Chrome, Edge and Brave: an extension (in the `extension` folder) that fills a login when you click it or the key in a password box, and offers to save new logins after you sign in.
 - **1.0** - First version: the vault, generator, Password Health, 2FA codes, import from NordPass / CSV / Bitwarden, encrypted backup and the recovery sheet.
+
+## Developer tools (2.6)
+
+Both are in **Settings > Developer tools**, off until you turn them on, and only work while Hallow Keys is unlocked.
+
+**SSH agent.** Turn on *SSH agent*, then tick the SSH key items to offer (only OpenSSH-format keys without a passphrase - they're already inside your encrypted vault; to remove a passphrase: `ssh-keygen -p -f <file>`). Windows' ssh, ssh-add, ssh-keygen and anything else using Windows' OpenSSH then see them on the standard pipe `\\.\pipe\openssh-ssh-agent`. Check with `ssh-add -L`. Each signature asks first (the prompt names the program and the key; "don't ask again for N minutes" is per program and key and forgotten when Hallow Keys locks), or uses Windows Hello if you switch that on. Adding or removing keys from outside (`ssh-add <file>`) is refused - the keys live in the vault.
+
+If Windows' *OpenSSH Authentication Agent* service is running it owns the standard pipe; Hallow Keys doesn't stop or change it (that's a Windows setting). Turn on *Use Hallow Keys' own pipe* and point ssh at it:
+
+```
+$env:SSH_AUTH_SOCK = '\\.\pipe\hallow-keys-ssh-agent'     # PowerShell, this window
+
+# or for every program, in %USERPROFILE%\.ssh\config (forward slashes: ssh treats \\ as an escape)
+Host *
+  IdentityAgent //./pipe/hallow-keys-ssh-agent
+```
+
+**Git.** Git for Windows comes with its own ssh, which can't reach Windows' agent pipe - point git at Windows' OpenSSH:
+
+```
+git config --global core.sshCommand C:/Windows/System32/OpenSSH/ssh.exe
+# commit signing with an SSH key from the vault
+git config --global gpg.format ssh
+git config --global gpg.ssh.program C:/Windows/System32/OpenSSH/ssh-keygen.exe
+git config --global user.signingkey "key::ssh-ed25519 AAAA... (the key's public key line)"
+git config --global commit.gpgsign true
+```
+
+Each signed commit asks once (or not, within a remembered approval). To check signatures: `gpg.ssh.allowedSignersFile` with lines like `you@example.com ssh-ed25519 AAAA...`, then `git log --show-signature`.
+
+**Command line.** `hk.exe` is in Hallow Keys' folder (`%LOCALAPPDATA%\Programs\Hallow Keys`); `HallowKeys.exe` takes the same arguments, but use `hk.exe` in scripts - shells wait for it and get its exit code.
+
+```
+hk --get "GitHub"                          # the password
+hk --get "GitHub" --field username         # username, password, totp (the current code), notes, url, or any field by name
+hk --get "Example API/credential"          # item/field
+hk --env .env.template --out .env          # fills {{hk:Item/field}} placeholders; never overwrites a file (no --out: stdout)
+$env:DB_PASS = 'hk:Database/password'      # variables set to hk:item/field ...
+hk --run -- npm start                      # ... are filled in for the command it starts (and --run --env <template> adds NAME=value lines)
+```
+
+Every request shows a prompt naming the program that asked (e.g. "hk.exe (from powershell.exe)") and the items and fields; a wallet's recovery phrase and passkeys are never given out. Nothing is logged except "who asked for which item" in the Activity list. Exit codes: **0** ok, **1** usage, **2** Hallow Keys isn't running, **3** locked, **4** item or field not found (or several items have that title), **5** not allowed (or no answer in 60 seconds), **6** the command line is turned off, **7** other error; `--run` returns the command's own exit code.
 
 ## How it's built
 

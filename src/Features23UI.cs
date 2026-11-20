@@ -69,6 +69,7 @@ namespace HallowKeys
             w.StartEdit(gh, false); big(w, "v23-passkey-edit.png"); w.editing = null;
             w.tab = "login"; w.selected = d.Items.Last(i => i.Type == "login" && i.Title == "GitHub"); w.ShowMain(); big(w, "v23-login-with-passkey.png");
             w.tab = "all"; w.selected = null; w.ShowMain(); big(w, "v23-all-items.png");
+            SnapExtra24();   // v2.4
         }
     }
 }

@@ -71,6 +71,7 @@ namespace HallowKeys
             navBtn("health", "heart-pulse", "Password Health", watch.Rows.Count(x => x.Points > 0));
             navBtn("expiring", "hourglass-half", "Expiring", Expiry.Soon(scope, DateTime.Now, S.ExpiryDays).Count);   // v1.6
             navBtn("vaults", "layer-group", "Vaults and travel", Vaults.Live(vault.Data).Count(v => Vaults.Shown(vault.Data, new Item { VaultId = v.Id }, Travel)));   // v2.1
+            navBtn("sharing", "users", "Sharing", vault.Data.Shared == null ? -1 : vault.Data.Shared.Count);   // v2.4
             navBtn("transfer", "file-import", "Import and export", -1);
             ExtraNav(nav, navBtn);
             navBtn("settings", "gear", "Settings", -1);
@@ -86,6 +87,7 @@ namespace HallowKeys
             else if (view == "settings") dock.Children.Add(SettingsPage());
             else if (view == "expiring") dock.Children.Add(ExpiringPage());
             else if (view == "vaults") dock.Children.Add(VaultsPage());   // v2.1
+            else if (view == "sharing") dock.Children.Add(SharingPage());   // v2.4
             else if (ExtraPage(view, dock)) { }
             else ListArea(dock);   // v2.1: search, title, category tabs, the sortable table and the details panel
             root.Child = dock;

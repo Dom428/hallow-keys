@@ -127,7 +127,7 @@ namespace HallowKeys
                 if (string.IsNullOrWhiteSpace(name)) return;
                 vault.Data.Templates.Add(ItemTypes.MakeTemplate(it, name.Trim())); SaveVault("Template \"" + name.Trim() + "\" saved - it's under New item.");
             };
-            row.Children.Add(dup); row.Children.Add(tpl); sp.Children.Add(row);
+            row.Children.Add(dup); row.Children.Add(tpl); ShareButton(row, it); sp.Children.Add(row);   // v2.4: Share
         }
 
         // ---- editor

@@ -9,6 +9,14 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.4 - SHARING (NO SERVER)
+- New Sharing page. Your member card (a short code with a fingerprint) is what others need to add you.
+- Shared vaults: one file in a folder you share with family or a team (shared OneDrive/Dropbox folder, NAS). Each member runs
+  their own Hallow Keys; everything is encrypted to each member's own key. Put items in with Share > Copy into the shared vault.
+- Removing a member changes the shared vault's key: they can't read anything new, but may have kept copies of what they saw.
+- One item as a file: Share > As an encrypted file - locked with a passphrase, opens until the date you pick. Send the file and
+  the passphrase separately. Passkeys can't be shared.
+
 WHAT'S NEW IN 2.3 - PASSKEYS
 - Hallow Keys keeps passkeys. When a site asks to make or use one, the browser extension shows Hallow Keys' prompt in the
   corner of the page: Save passkey in Hallow Keys, pick one of yours, or "Use another device or the browser's own".

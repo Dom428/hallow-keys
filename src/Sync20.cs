@@ -193,6 +193,10 @@ namespace HallowKeys
             Vaults.Merge(local.Data, remote.Data);                 // v2.1: the vault list (each vault's latest change wins)
             Vaults.MergeUsage(local.Data, remote.Data, ids);       // v2.1: last used (the latest time of each item)
             if (local.Data.PhoneKey == null && remote.Data.PhoneKey != null && remote.Data.PhoneSalt != null) { local.Data.PhoneKey = (byte[])remote.Data.PhoneKey.Clone(); local.Data.PhoneSalt = (byte[])remote.Data.PhoneSalt.Clone(); local.Data.PhoneIterations = remote.Data.PhoneIterations; }
+            // v2.4: one member identity per vault (if two PCs each made one before syncing, the same one wins on both), shared vaults joined on any PC
+            if (remote.Data.MemberKey != null && remote.Data.MemberPub != null && (local.Data.MemberPub == null || string.CompareOrdinal(Passkeys.B64u(remote.Data.MemberPub), Passkeys.B64u(local.Data.MemberPub)) < 0))
+            { local.Data.MemberKey = (byte[])remote.Data.MemberKey.Clone(); local.Data.MemberPub = (byte[])remote.Data.MemberPub.Clone(); if (string.IsNullOrEmpty(local.Data.MemberName)) local.Data.MemberName = remote.Data.MemberName; }
+            if (remote.Data.Shared != null) { if (local.Data.Shared == null) local.Data.Shared = new List<SharedRef>(); foreach (var s in remote.Data.Shared) { var m = local.Data.Shared.FirstOrDefault(x => x.Id == s.Id); if (m == null) local.Data.Shared.Add(new SharedRef { Id = s.Id, Name = s.Name, Folder = s.Folder, Epoch = s.Epoch, Key = s.Key == null ? null : (byte[])s.Key.Clone() }); else if (s.Epoch > m.Epoch) { m.Epoch = s.Epoch; m.Key = s.Key == null ? null : (byte[])s.Key.Clone(); } } }
             rep.KeysAdopted = local.AdoptKeysFrom(remote);
             var after = Digest(local.Data);
             rep.LocalChanged = after != before || rep.KeysAdopted;

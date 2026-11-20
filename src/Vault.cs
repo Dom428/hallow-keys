@@ -109,7 +109,11 @@ namespace HallowKeys
         [DataMember] public List<Tombstone> Tombstones = new List<Tombstone>();        // v2.0: items deleted for good (so another PC deletes them too, not brings them back)
         [DataMember(EmitDefaultValue = false)] public byte[] AccountKey;               // v2.0: the Secret Key (only ever inside the encrypted vault), so a PC that's unlocked learns a new one
         [DataMember(EmitDefaultValue = false)] public List<VaultInfo> Vaults;          // v2.1: your vaults (Personal, Gaming, Work...): name, colour, safe for travel; deleted ones stay as markers
-        [DataMember(EmitDefaultValue = false)] public List<UsageMark> Usage;           // v2.1: when each item was last filled, copied or opened (merged by the latest time, never part of an item's revision)
+        [DataMember(EmitDefaultValue = false)] public List<UsageMark> Usage;
+        // v2.4: your member identity (ECDH P-256 - the private half only ever inside the encrypted vault) and the shared vaults you're in
+        [DataMember(EmitDefaultValue = false)] public byte[] MemberKey, MemberPub;
+        [DataMember(EmitDefaultValue = false)] public string MemberName;
+        [DataMember(EmitDefaultValue = false)] public List<SharedRef> Shared;           // v2.1: when each item was last filled, copied or opened (merged by the latest time, never part of an item's revision)
         [OnDeserialized] void Fix(StreamingContext c) { if (Tombstones == null) Tombstones = new List<Tombstone>(); if (Items == null) Items = new List<Item>(); if (Folders == null) Folders = new List<string>(); if (LeakedIds == null) LeakedIds = new List<string>(); if (Trash == null) Trash = new List<Item>(); if (Templates == null) Templates = new List<ItemTemplate>(); if (ExpiryNotified == null) ExpiryNotified = new List<string>(); }
     }
 

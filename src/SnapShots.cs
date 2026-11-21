@@ -59,6 +59,7 @@ namespace HallowKeys
             w3.selected = w3.vault.Data.Items[0]; w3.ShowMain(); save(w3, "main.png");
             w3.StartEdit(w3.vault.Data.Items[0], false); save(w3, "edit.png");
             foreach (var v in new[] { "health", "generator", "transfer", "settings" }) { w3.view = v; w3.ShowMain(); save(w3, v + ".png"); }
+            new MainWindow(false, true).SnapLook(save);   // v2.9
             w3.SnapExtra(save);
             w3.ShowRecoverySheet("ABCD-EFGH-JKLM-NPQR-STUV-WXYZ-2345-6789", true);
         }

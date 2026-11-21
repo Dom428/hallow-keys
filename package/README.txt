@@ -9,6 +9,10 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.9 - LIGHT AND DARK MODE
+- A light look as well as the dark one. It follows Hallow Toolkit's switch (Light / Dark / Same as
+  Windows), live; Settings > App > Look picks Light or Dark for Hallow Keys alone.
+
 WHAT'S NEW IN 2.8 - PASSWORD HEALTH FOR HALLOW GUARD
 - Hallow Guard 1.1's one safety score can include your passwords: while unlocked, Hallow Keys
   puts COUNTS ONLY in its status file (how many logins are weak, reused, leaked, on a breached

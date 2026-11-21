@@ -232,6 +232,7 @@ namespace HallowKeys
             ap.Children.Add(Switch("Keep running in the tray when I close this window", S.TrayOnClose, v => { S.TrayOnClose = v; S.Save(); }));
             ap.Children.Add(Switch("Use the Hallow icon (lives in Hallow Hub's tray menu when Hub runs)", S.UseHallowIcon, v => { S.UseHallowIcon = v; S.Save(); CheckHost(); }));
             ap.Children.Add(Switch("Use the Hallow accent (the colour picked in Hallow Toolkit)", S.UseHallowAccent, v => { S.UseHallowAccent = v; S.Save(); ApplyAccent(); }));
+            ap.Children.Add(LookRow());   // v2.9
             ap.Children.Add(Switch("Start with Windows (in the tray, locked)", StartsWithWindows(), v => SetStartWithWindows(v)));
             SettingsExtra(ap);
             var ar = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 8, 0, 0) };
@@ -376,7 +377,7 @@ namespace HallowKeys
             var p1 = new PasswordBox { Style = (Style)Application.Current.FindResource("Pwd") }; sp.Children.Add(p1);
             sp.Children.Add(new TextBlock { Text = "Type it again", Margin = new Thickness(0, 10, 0, 6) });
             var p2 = new PasswordBox { Style = (Style)Application.Current.FindResource("Pwd") }; sp.Children.Add(p2);
-            var err = new TextBlock { Foreground = new SolidColorBrush(Color.FromRgb(0xF0, 0xBE, 0x5A)), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap }; sp.Children.Add(err);
+            var err = new TextBlock { Foreground = MainWindow.B("#F0BE5A"), Margin = new Thickness(0, 6, 0, 0), TextWrapping = TextWrapping.Wrap }; sp.Children.Add(err);
             sp.Children.Add(Buttons(w, () =>
             {
                 if (p1.Password.Length < 8) { err.Text = "Use at least 8 characters."; return false; }

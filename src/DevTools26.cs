@@ -203,7 +203,7 @@ namespace HallowKeys
         Window ApprovalWindow(string what, string text, bool offerRemember)
         {
             var w = new Window { Title = "Hallow Keys - " + what, Width = 460, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, Topmost = true, WindowStartupLocation = WindowStartupLocation.CenterScreen,
-                Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = new FontFamily("Segoe UI"), FontSize = 12.5, ShowInTaskbar = true };
+                Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = new FontFamily("Segoe UI"), FontSize = 12.5, ShowInTaskbar = true }; Look.Track(w);
             try { w.Icon = AppIcon(); } catch { }
             var sp = new StackPanel { Margin = new Thickness(18, 16, 18, 16) };
             var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 0, 0, 8) };

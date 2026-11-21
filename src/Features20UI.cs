@@ -348,7 +348,7 @@ namespace HallowKeys
         {
             bool kit = secretKey != null;
             var w = new Window { Title = kit ? "Hallow Keys - Emergency Kit" : "Hallow Keys - recovery sheet", Width = 600, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = IsVisible ? this : null,
-                Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = FontFamily };
+                Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = FontFamily }; Look.Track(w);
             var sp = new StackPanel { Margin = new Thickness(26, 20, 26, 20) };
             string head = why == "new" ? "Your vault is ready. Print your Emergency Kit." : why == "upgrade" ? "Upgraded. Print your new Emergency Kit." : why == "rotated" ? "You have a new Secret Key. Print your new Emergency Kit." : why == "show" ? "Your Emergency Kit" : kit ? "Your new recovery code - print your Emergency Kit" : "Your new recovery sheet";
             if (!kit && why == "new") head = "Your vault is ready. Print your recovery sheet.";

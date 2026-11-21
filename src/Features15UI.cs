@@ -88,7 +88,7 @@ namespace HallowKeys
         void ShowChooser(List<Item> items, ForegroundInfo fg)
         {
             var w = new Window { WindowStyle = WindowStyle.None, ResizeMode = ResizeMode.NoResize, ShowInTaskbar = false, Topmost = true, SizeToContent = SizeToContent.Height, Width = 340,
-                WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = (Brush)FindResource("Bg"), BorderBrush = B("#3A3248"), BorderThickness = new Thickness(1), Title = "Hallow Keys" };
+                WindowStartupLocation = WindowStartupLocation.CenterScreen, Background = (Brush)FindResource("Bg"), BorderBrush = B("#3A3248"), BorderThickness = new Thickness(1), Title = "Hallow Keys" }; Look.Track(w);
             var sp = new StackPanel { Margin = new Thickness(12) };
             sp.Children.Add(new TextBlock { Text = "Type which login into " + DesktopFill.Describe(fg.Exe) + "?", FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 0, 0, 8), Foreground = (Brush)FindResource("Text") });
             var list = new ListBox { Background = Brushes.Transparent, BorderThickness = new Thickness(0), MaxHeight = 300 };

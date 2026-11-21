@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.8.0.0")]
-[assembly: AssemblyFileVersion("2.8.0.0")]
+[assembly: AssemblyVersion("2.9.0.0")]
+[assembly: AssemblyFileVersion("2.9.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.8";
+        public const string Version = "2.9";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -61,9 +61,11 @@ namespace HallowKeys
         {
             string xaml;
             using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("HallowKeys.Theme.xaml")) using (var r = new System.IO.StreamReader(s)) xaml = r.ReadToEnd();
-            AccentHex = Accent.Current(Snap.On ? false : KeysSettings.Load().UseHallowAccent);
+            var ks = Snap.On ? null : KeysSettings.Load();
+            AccentHex = Accent.Current(ks != null && ks.UseHallowAccent);
+            Look.IsLight = Look.Resolve(ks != null ? ks.Look : Look.Follow, Accent.FilePath);   // v2.9: light / dark (snaps follow the test theme.json)
             app.Resources.MergedDictionaries.Clear();
-            app.Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Parse(Accent.ApplyTo(xaml, AccentHex)));
+            app.Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Parse(KeysLook.Build(xaml, AccentHex, Look.IsLight)));
         }
     }
 
@@ -72,7 +74,11 @@ namespace HallowKeys
         [DllImport("dwmapi.dll")] static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
         [StructLayout(LayoutKind.Sequential)] struct LASTINPUTINFO { public uint cbSize, dwTime; }
         [DllImport("user32.dll")] static extern bool GetLastInputInfo(ref LASTINPUTINFO i);
-        public static SolidColorBrush B(string hex) { return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex)); }
+        public static SolidColorBrush B(string hex)
+        {
+            if (Look.IsLight) hex = string.Equals(hex, Program.AccentHex, StringComparison.OrdinalIgnoreCase) ? Look.TextAccent(hex) : Look.Pick(hex, KeysLook.Code);   // v2.9: light mode
+            return new SolidColorBrush((Color)ColorConverter.ConvertFromString(hex));
+        }
 
         public readonly KeysSettings S;
         public Vault vault;                 // null while locked
@@ -88,7 +94,7 @@ namespace HallowKeys
             WindowStartupLocation = WindowStartupLocation.CenterScreen;
             try { Icon = AppIcon(); } catch { }
             root = new Border(); Content = root;
-            SourceInitialized += (s, e) => { int dark = 1; DwmSetWindowAttribute(new WindowInteropHelper(this).Handle, 20, ref dark, 4); };
+            Look.Track(this);   // v2.9: the title bar follows light / dark
             if (snap) return;
             Crash.Scrub = ScrubSecrets;
             Closing += (s, e) =>
@@ -106,6 +112,9 @@ namespace HallowKeys
             SystemEvents.PowerModeChanged += (s, e) => { if (e.Mode == PowerModes.Suspend) Dispatcher.BeginInvoke(new Action(() => Lock("Locked because the PC went to sleep."))); };
             var host = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) }; host.Tick += (s, e) => CheckHost(); host.Start(); CheckHost();
             accentWatch = Accent.Watch(() => Dispatcher.BeginInvoke(new Action(ApplyAccent)));
+            // v2.9: watch for theme.json's folder if it isn't there yet, and follow Windows' light / dark setting ("system")
+            var aw = new DispatcherTimer { Interval = TimeSpan.FromSeconds(15) }; aw.Tick += (s, e) => { if (accentWatch == null) { accentWatch = Accent.Watch(() => Dispatcher.BeginInvoke(new Action(ApplyAccent))); if (accentWatch != null) ApplyAccent(); } }; aw.Start();
+            Look.WatchSystem(Dispatcher, ApplyAccent);
             Loaded += (s, e) => ShowCrashNotice();
             if (startHidden) Dispatcher.BeginInvoke(new Action(ShowCrashNotice), DispatcherPriority.ApplicationIdle);
             if (KeysSettings.TestDir == null || Environment.GetEnvironmentVariable("HALLOW_KEYS_API") != null)
@@ -385,8 +394,9 @@ namespace HallowKeys
         System.IO.FileSystemWatcher accentWatch;
         void ApplyAccent()
         {
-            var a = Accent.Current(S.UseHallowAccent); if (a == Program.AccentHex) return;
+            var a = Accent.Current(S.UseHallowAccent); if (a == Program.AccentHex && Look.Resolve(S.Look, Accent.FilePath) == Look.IsLight) return;   // v2.9: or the mode changed
             Program.LoadTheme(Application.Current);
+            Background = (Brush)FindResource("Bg"); Foreground = (Brush)FindResource("Text"); Look.TitleBars();
             if (vault == null) ShowLock(); else ShowMain();
         }
         bool crashShown;

@@ -26,7 +26,7 @@ namespace HallowKeys
         // the dialog: the contact's card, the vaults, whether the recovery code is needed too
         Window EmergencyDialog(out TextBox cardBox, out List<CheckBox> picks, out CheckBox needCode, out PasswordBox codeBox, out Button ok)
         {
-            var w = new Window { Title = "Make an emergency package", Width = 560, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = IsVisible ? this : null, Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = FontFamily };
+            var w = new Window { Title = "Make an emergency package", Width = 560, SizeToContent = SizeToContent.Height, ResizeMode = ResizeMode.NoResize, WindowStartupLocation = WindowStartupLocation.CenterOwner, Owner = IsVisible ? this : null, Background = (Brush)FindResource("Bg"), Foreground = (Brush)FindResource("Text"), FontFamily = FontFamily }; Look.Track(w);
             var sp = new StackPanel { Margin = new Thickness(22, 18, 22, 18) }; w.Content = sp;
             sp.Children.Add(new TextBlock { Text = "Make an emergency package", FontSize = 17, FontWeight = FontWeights.Bold });
             sp.Children.Add(new TextBlock { Text = "1. Your contact's member card (they find it on their Sharing page). Compare the fingerprint with them before you send anything.", TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 4) });

@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.7.0.0")]
-[assembly: AssemblyFileVersion("2.7.0.0")]
+[assembly: AssemblyVersion("2.8.0.0")]
+[assembly: AssemblyFileVersion("2.8.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.7";
+        public const string Version = "2.8";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -275,6 +275,7 @@ namespace HallowKeys
         public void Lock(string why)
         {
             if (vault == null) return;
+            CountHealth(true);   // v2.8: the counts a locked Keys keeps reporting
             OnLocking(); StopSync(); Lock21(); Lock26();
             SafeClip.ClearIfOurs();
             vault.Dispose(); vault = null; selected = null; editing = null; showHistory = false; lastSearch = "";
@@ -342,7 +343,7 @@ namespace HallowKeys
             var t = Crash.LastTime();
             return Family.Json(new Dictionary<string, object> { { "app", "Keys" }, { "version", Program.Version }, { "updated", Family.Time(DateTime.Now) }, { "running", true },
                 { "locked", vault == null }, { "items", vault == null ? (object)null : Shown().Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) },
-                { "sync", SyncStatus() } });   // v2.0: sync state only - never a path, key or item
+                { "sync", SyncStatus() }, { "health", HealthStatus() } });   // v2.0: sync state only - never a path, key or item; v2.8: health = counts only
         }
         public void WriteStatus() { if (!Snap.On) Family.WriteStatus(StatusJson()); }
 

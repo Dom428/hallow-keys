@@ -9,6 +9,12 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.8 - PASSWORD HEALTH FOR HALLOW GUARD
+- Hallow Guard 1.1's one safety score can include your passwords: while unlocked, Hallow Keys
+  puts COUNTS ONLY in its status file (how many logins are weak, reused, leaked, on a breached
+  site or missing 2FA, and the Password Health score). Never a name, address or password.
+  While locked it reports the last counts and how old they are.
+
 WHAT'S NEW IN 2.7 - PHONE, PROPERLY
 - With Hallow Remote 1.12, the phone's Keys tab can edit: turn on "Let the phone edit" (Settings > App, under the phone
   copy; off by default). Add, edit, move to the trash, generate passwords, 2FA keys, folders and vaults.

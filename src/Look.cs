@@ -87,6 +87,25 @@ namespace HallowKeys
             while ((Contrast(cur, LPanel) < 4.5 || Contrast(cur, LBg) < 4.5) && l > 0) { l = Math.Max(0, l - 0.005); cur = H(FromHsl(h, s, l)); }
             return cur;
         }
+        // v2.10: the family accent rule (same as Hallow Toolkit 5.16): darken in HSL (System.Drawing hue / saturation / brightness)
+        // 0.01 at a time until the colour reaches min:1 on the given surface
+        public static string Darken(string hex, double min, string on)
+        {
+            if (Contrast(hex, on) >= min) return hex.ToUpperInvariant();
+            var c = C(hex); var dc = System.Drawing.Color.FromArgb(c.R, c.G, c.B);
+            double h = dc.GetHue() / 360.0, s = dc.GetSaturation(), l = dc.GetBrightness(); var cur = hex.ToUpperInvariant();
+            while (l > 0)
+            {
+                l = Math.Max(0.0, l - 0.01); cur = H(FromHsl(h, s, l));
+                if (Contrast(cur, on) >= min) break;
+            }
+            return cur;
+        }
+        // text on a filled accent: whichever of dark text / white reads better
+        public static string FillText(string fill) { return Contrast(fill, LText) >= Contrast(fill, "#FFFFFF") ? LText : "#FFFFFF"; }
+        // light mode's accent fill (buttons, chips that are on, ticked boxes): the real accent, unless neither text colour reaches
+        // 4.5:1 on it (e.g. violet #8B5CF6) - then the accent darkened to 4.5:1 against white, with white text
+        public static string FillAccent(string accent) { return Contrast(accent, FillText(accent)) >= 4.5 ? accent.ToUpperInvariant() : Darken(accent, 4.5, "#FFFFFF"); }
         static void ToHsl(Color c, out double h, out double s, out double l)
         {
             double r = c.R / 255.0, g = c.G / 255.0, b = c.B / 255.0, mx = Math.Max(r, Math.Max(g, b)), mn = Math.Min(r, Math.Min(g, b));

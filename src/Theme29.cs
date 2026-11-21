@@ -20,10 +20,10 @@ namespace HallowKeys
             { "#241E2E", Look.LPanel },   // menus, tooltips, popups
             { "#1A1522", Look.LPanel },   // text fields
             { "#55496A", "#B9AECB" },     // button border on hover
-            { "#58566A", "#B8AFC8" },     // switch track (off), scrollbar hover
+            { "#58566A", "#7F7890" },     // switch track (off), scrollbar hover - v2.10: 3:1 so the off switch shows (white knob 4.2:1)
             { "#CDCAD6", "#FFFFFF" },     // switch knob (off)
-            { "#3A2F4A", "#E2D9F0" },     // selected nav item
-            { "#5A5068", "#A69DB5" },     // tick box border
+            { "#3A2F4A", "#EBE3FF" },     // selected nav item / list row - v2.10: light enough for muted text (4.56:1)
+            { "#5A5068", "#7F7890" },     // tick box border - v2.10: 3:1 on every row colour
             { "#6ED28C", Look.LGreen },   // switch on (a fill)
             { "#A98BE0", Look.LLilac },   // lilac
         };
@@ -44,7 +44,8 @@ namespace HallowKeys
         }
 
         // Theme.xaml for this accent and mode. Light: accent caret and focus lines darkened for contrast, hover tint dark instead of
-        // white, then the swap; filled buttons keep the real accent (with Accent.OnAccent text).
+        // white, then the swap. v2.10: filled accents (Accent buttons, chips that are on, ticked boxes) use the family fill rule -
+        // the real accent unless its text can't reach 4.5:1 (violet), then a darker fill with white text. Dark mode is unchanged.
         public static string Build(string xaml, string accent, bool light)
         {
             if (light)
@@ -54,6 +55,10 @@ namespace HallowKeys
                 xaml = Regex.Replace(xaml, "(Property=\"BorderBrush\" Value=\")#F07820", "${1}" + ta);
                 xaml = xaml.Replace("x:Name=\"hl\" Background=\"#FFFFFF\"", "x:Name=\"hl\" Background=\"#1E1A26\"");
                 xaml = Look.Swap(xaml, Xaml);
+                var fill = Look.FillAccent(accent);
+                xaml = Regex.Replace(xaml, "#F07820", fill, RegexOptions.IgnoreCase);
+                xaml = Regex.Replace(xaml, "#F59A50", Accent.Lighter(fill), RegexOptions.IgnoreCase);
+                return Regex.Replace(xaml, "#1A0E04", Look.FillText(fill), RegexOptions.IgnoreCase);
             }
             return Accent.ApplyTo(xaml, accent);
         }

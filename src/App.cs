@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.9.0.0")]
-[assembly: AssemblyFileVersion("2.9.0.0")]
+[assembly: AssemblyVersion("2.10.0.0")]
+[assembly: AssemblyFileVersion("2.10.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.9";
+        public const string Version = "2.10";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -62,7 +62,7 @@ namespace HallowKeys
             string xaml;
             using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("HallowKeys.Theme.xaml")) using (var r = new System.IO.StreamReader(s)) xaml = r.ReadToEnd();
             var ks = Snap.On ? null : KeysSettings.Load();
-            AccentHex = Accent.Current(ks != null && ks.UseHallowAccent);
+            AccentHex = Accent.Current(ks != null ? ks.UseHallowAccent : KeysSettings.TestDir != null);   // v2.10: --snap with a test folder uses its theme.json accent
             Look.IsLight = Look.Resolve(ks != null ? ks.Look : Look.Follow, Accent.FilePath);   // v2.9: light / dark (snaps follow the test theme.json)
             app.Resources.MergedDictionaries.Clear();
             app.Resources.MergedDictionaries.Add((ResourceDictionary)XamlReader.Parse(KeysLook.Build(xaml, AccentHex, Look.IsLight)));

@@ -9,6 +9,11 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.10 - LIGHT MODE READABILITY FIXES
+- In the light look text reads clearly whatever your Hallow accent: buttons in a light
+  accent like violet use a slightly deeper shade, the selected item's highlight is lighter so its
+  grey text reads, and off switches and empty tick boxes have clearer outlines. Dark is unchanged.
+
 WHAT'S NEW IN 2.9 - LIGHT AND DARK MODE
 - A light look as well as the dark one. It follows Hallow Toolkit's switch (Light / Dark / Same as
   Windows), live; Settings > App > Look picks Light or Dark for Hallow Keys alone.

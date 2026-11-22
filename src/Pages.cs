@@ -178,6 +178,7 @@ namespace HallowKeys
             SyncCard(sp);          // v2.0
             TravelCard(sp);        // v2.1
             SiteIconsCard(sp);     // v2.1
+            AuthCard(sp);          // v2.11: Hallow Authenticator
             var lk = new StackPanel();
             lk.Children.Add(new TextBlock { Text = "Locking", FontWeight = FontWeights.SemiBold, FontSize = 14, Margin = new Thickness(0, 0, 0, 6) });
             var row = new StackPanel { Orientation = Orientation.Horizontal };

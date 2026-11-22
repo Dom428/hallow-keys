@@ -87,6 +87,7 @@ namespace HallowKeys
         [DataMember] public bool SeedOnPhone;                                    // v1.6: crypto wallet - put the recovery phrase in the phone copy (off unless switched on)
         [DataMember(EmitDefaultValue = false)] public SyncMeta Sync;           // v2.0: this item's revision for sync (see Sync20.cs) - not part of its content
         [DataMember(EmitDefaultValue = false)] public string VaultId;          // v2.1: the vault it belongs to (null = Personal; see Vaults21.cs). Part of its content: a move is an edit
+        [DataMember(EmitDefaultValue = false)] public string TotpOnPhone;      // v2.11: when its 2FA key was MOVED to Hallow Authenticator on the phone (the key is no longer here)
         [OnDeserialized] void Fix(StreamingContext c)
         {
             if (Urls == null) Urls = new List<string>(); if (Files == null) Files = new List<Attachment>(); if (OldPasswords == null) OldPasswords = new List<string>();
@@ -107,6 +108,7 @@ namespace HallowKeys
         [DataMember] public List<ItemTemplate> Templates = new List<ItemTemplate>();   // v1.6: your own item templates (layouts, no values)
         [DataMember] public List<string> ExpiryNotified = new List<string>();          // v1.6: expiry reminders already shown (item|field|date|stage)
         [DataMember] public List<Tombstone> Tombstones = new List<Tombstone>();        // v2.0: items deleted for good (so another PC deletes them too, not brings them back)
+        [DataMember(EmitDefaultValue = false)] public byte[] AuthMirrorKey;            // v2.11: the PC mirror's key for Hallow Authenticator (null = off)
         [DataMember(EmitDefaultValue = false)] public byte[] AccountKey;               // v2.0: the Secret Key (only ever inside the encrypted vault), so a PC that's unlocked learns a new one
         [DataMember(EmitDefaultValue = false)] public List<VaultInfo> Vaults;          // v2.1: your vaults (Personal, Gaming, Work...): name, colour, safe for travel; deleted ones stay as markers
         [DataMember(EmitDefaultValue = false)] public List<UsageMark> Usage;

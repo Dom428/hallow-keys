@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.10.0.0")]
-[assembly: AssemblyFileVersion("2.10.0.0")]
+[assembly: AssemblyVersion("2.11.0.0")]
+[assembly: AssemblyFileVersion("2.11.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.10";
+        public const string Version = "2.11";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -168,6 +168,9 @@ namespace HallowKeys
                 var rec = new TextBlock { Margin = new Thickness(0, 14, 0, 0), Foreground = Muted, Cursor = Cursors.Hand, TextDecorations = TextDecorations.Underline, Text = "Forgot it? Use your recovery code" };
                 rec.MouseLeftButtonUp += (s, e) => UnlockRecovery();
                 sp.Children.Add(rec);
+                var over = new TextBlock { Margin = new Thickness(0, 8, 0, 0), Foreground = Muted, Cursor = Cursors.Hand, TextDecorations = TextDecorations.Underline, Text = "Lost both? Start over" };   // v2.11
+                over.MouseLeftButtonUp += (s, e) => StartOverDialog();
+                sp.Children.Add(over);
                 Loaded += (s, e) => pb.Focus(); Dispatcher.BeginInvoke(new Action(() => pb.Focus()), DispatcherPriority.Input);
             }
             else
@@ -324,7 +327,9 @@ namespace HallowKeys
                     new Dictionary<string, object> { { "id", "lock" }, { "label", "Lock now" }, { "enabled", vault != null } },
                     new Dictionary<string, object> { { "id", "generate" }, { "label", "Generate password" } } } } }));
                 case "invoke": return OnUi(() => MenuInvoke(arg));
-                case "phone-change": return OnUi(() => PhoneChangeCmd(arg));   // v2.7: a sealed change from the phone, passed on by Hallow Remote
+                case "phone-change": return OnUi(() => PhoneChangeCmd(arg));
+                case "authtest-startover": return KeysSettings.TestDir == null ? "error unknown command" : OnUi(() => StartOverNow(arg));   // v2.11: developer tests only (test folder)
+                case "authtest-send": case "authtest-state": case "authtest-mirror-on": case "authtest-mirror": return OnUi(() => AuthTestCmd(cmd, arg));   // v2.11: developer tests only (test folder)   // v2.7: a sealed change from the phone, passed on by Hallow Remote
                 case "quit": new Thread(() => { Thread.Sleep(300); Dispatcher.BeginInvoke(new Action(Quit)); }) { IsBackground = true }.Start(); return "ok";
             }
             return "error unknown command";

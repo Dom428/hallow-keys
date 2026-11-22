@@ -191,6 +191,7 @@ namespace HallowKeys
                 Field(sp, "Password", it.Password, true, it.Password.Length > 0 ? Health.Rating(Health.Bits(it.Password)) : null);
                 var spec = Totp.Parse(it.Totp);
                 if (spec != null) TotpRow(sp, spec);
+                else if (!string.IsNullOrEmpty(it.TotpOnPhone)) OnPhoneRow(sp, it);   // v2.11
                 foreach (var u in it.Urls) UrlRow(sp, u);
                 AppsRow(sp, it);   // v1.5
                 LoginPasskeys(sp, it);   // v2.3

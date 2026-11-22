@@ -9,6 +9,15 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.11 - HALLOW AUTHENTICATOR
+- Move (or copy) your 2FA codes to Hallow Authenticator on your phone: Settings > Hallow Authenticator > Send my 2FA
+  codes to my phone. Scan the code Keys shows with the app (needs Hallow Remote 1.19 with HTTPS). End-to-end sealed;
+  after a move Keys stops filling those codes and shows "On your phone" - password and code on different devices.
+- Optional PC mirror (off by default): read-only codes the phone sends, shown only while Keys is unlocked.
+- Lost both the master password and the recovery code? The lock screen has "Lost both? Start over": type ERASE and
+  the old vault is moved (not deleted) into %APPDATA%HallowKeysabandoned-<date>, sync / Windows Hello / phone copy
+  are turned off (your sync folder is left alone), and you create a new vault.
+
 WHAT'S NEW IN 2.10 - LIGHT MODE READABILITY FIXES
 - In the light look text reads clearly whatever your Hallow accent: buttons in a light
   accent like violet use a slightly deeper shade, the selected item's highlight is lighter so its

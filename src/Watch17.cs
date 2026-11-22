@@ -103,7 +103,7 @@ namespace HallowKeys
 
         // ---- matching (all here, on this PC)
         static IEnumerable<string> Registrables(Item it) { return it.Urls.Select(u => Domain.Registrable(Domain.HostOf(u))).Where(r => r != null && r.Contains('.')).Distinct(); }
-        public static bool HasTotp(Item it) { return Totp.Parse(it.Totp) != null || it.Fields.Any(f => f.Kind == "totp" && Totp.Parse(f.Value) != null); }
+        public static bool HasTotp(Item it) { return Totp.Parse(it.Totp) != null || !string.IsNullOrEmpty(it.TotpOnPhone) || it.Fields.Any(f => f.Kind == "totp" && Totp.Parse(f.Value) != null); }
         public static TwoFaSite TwoFaFor(Item it, Dictionary<string, TwoFaSite> sites)
         {
             if (sites == null || it.Type != "login" || HasTotp(it)) return null;

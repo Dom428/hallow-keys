@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Hallow Keys",
-  "version": "1.6.0",
+  "version": "1.7.0",
   "description": "Fill logins, 2FA codes, cards and addresses, and sign in with passkeys, from Hallow Keys - the password manager on your PC. Only when you pick something.",
   "browser_specific_settings": {
     "gecko": {

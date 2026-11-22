@@ -163,7 +163,7 @@ namespace HallowKeys
                     var line = t.Result; int sp = line.IndexOf(' ');
                     var given = sp > 0 ? line.Substring(0, sp) : "";
                     if (!SameSecret(given)) reply = "{\"ok\":false,\"msg\":\"not allowed\"}";
-                    else if (!HelloFirst(line.Substring(sp + 1))) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", "Windows Hello didn't confirm it's you" } });
+                    else if (Prepare212(line.Substring(sp + 1)) && !HelloFirst(line.Substring(sp + 1))) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", "Windows Hello didn't confirm it's you" } });
                     else reply = onUi(() => Answer(line.Substring(sp + 1)));
                 }
                 var b = Encoding.UTF8.GetBytes(reply.Replace("\r", " ").Replace("\n", " ") + "\n"); p.Write(b, 0, b.Length); p.Flush(); Array.Clear(b, 0, b.Length);
@@ -189,6 +189,9 @@ namespace HallowKeys
         // v2.3: with Windows Hello unlock on, making or using a passkey asks Windows Hello first (on this pipe thread, not the window's)
         public Func<bool> HelloOn = () => false;
         public Action<string> Log = s => { };
+        // v2.12: a passkey request from a related origin (Microsoft: login.live.com asking for login.microsoft.com) - the rpId's
+        // /.well-known/webauthn is looked up here, off the window's thread; the window then only reads the remembered answer
+        bool Prepare212(string json) { RelatedOrigins.Prepare(json); return true; }
         bool HelloFirst(string json)
         {
             string type; try { type = S(js.Deserialize<Dictionary<string, object>>(json), "type"); } catch { return true; }

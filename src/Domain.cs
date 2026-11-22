@@ -40,6 +40,7 @@ namespace HallowKeys
             if (string.IsNullOrEmpty(host)) return null;
             try { return new IdnMapping().GetAscii(host.TrimEnd('.')).ToLowerInvariant(); } catch { return null; }
         }
+        public static bool IsMultiSuffix(string s) { return s != null && MultiSuffix.Contains(s); }   // v2.12: "co.uk", "github.io"...
         // "mail.google.co.uk" -> "google.co.uk"; IP addresses and single labels stay as they are
         public static string Registrable(string host)
         {

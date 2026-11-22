@@ -3,6 +3,9 @@
 // asks the extension's own prompt (webauthn-bridge.js, which the page can't reach into) instead of the browser's. Everything else -
 // passwords, federated logins, cross-origin frames, ES256-less requests - goes to the browser untouched, and the prompt's "Use another
 // device or the browser's own" calls the browser's original function. No key is ever in the page: the answer is the signed result only.
+// v1.7 (Keys 2.12): sites that ask for a security key or a phone (authenticatorAttachment "cross-platform", hints) get the prompt with
+// "Use another device" first; getClientCapabilities() says what Keys adds (passkeys on this PC, autofill, related origins) while it runs.
+// Related origins (one site, several domains - Microsoft's sign-in) are checked by the app against the site's own list.
 (function () {
   'use strict';
   if (window.__hallowKeysPasskeyPage) return;
@@ -73,6 +76,7 @@
     if (r.name === 'TypeError') return new TypeError(r.msg || 'Invalid request');
     return new DOMException(r.msg || 'The operation either timed out or was not allowed.', r.name || 'NotAllowedError');
   }
+  function hintsOf(pk) { return Array.isArray(pk.hints) ? pk.hints.filter(h => typeof h === 'string').slice(0, 5).map(h => h.slice(0, 20)) : []; }
   function rpIdOf(pk, kind) { const v = kind === 'create' ? (pk.rp && pk.rp.id) : pk.rpId; return v === undefined || v === null ? location.hostname : String(v); }
 
   proto.create = function create(options) {
@@ -85,7 +89,9 @@
       req = { rpId: rpIdOf(pk, 'create'), rpName: pk.rp && pk.rp.name ? String(pk.rp.name) : '', challenge: enc(bytes(pk.challenge)),
         userId: enc(bytes(pk.user.id)), userName: String(pk.user.name || ''), displayName: String(pk.user.displayName || ''),
         algs: (pk.pubKeyCredParams || []).filter(p => p && p.type === 'public-key').map(p => String(p.alg)),
-        exclude: (pk.excludeCredentials || []).filter(c => c && c.type === 'public-key').map(c => enc(bytes(c.id))) };
+        exclude: (pk.excludeCredentials || []).filter(c => c && c.type === 'public-key').map(c => enc(bytes(c.id))),
+        attachment: pk.authenticatorSelection && typeof pk.authenticatorSelection.authenticatorAttachment === 'string' ? pk.authenticatorSelection.authenticatorAttachment.slice(0, 20) : '',
+        hints: hintsOf(pk) };
     } catch (e) { return origCreate.apply(self, args); }
     const credProps = !!(options.publicKey.extensions && options.publicKey.extensions.credProps);
     return withAbort(signal, null, call('create', { req: req }).then(r => {
@@ -102,7 +108,7 @@
     try {
       const pk = options.publicKey;
       req = { rpId: rpIdOf(pk, 'get'), challenge: enc(bytes(pk.challenge)), allow: (pk.allowCredentials || []).filter(c => c && c.type === 'public-key').map(c => enc(bytes(c.id))),
-        conditional: options.mediation === 'conditional' };
+        conditional: options.mediation === 'conditional', hints: hintsOf(pk) };
     } catch (e) { return origGet.apply(self, args); }
     return withAbort(signal, null, call('get', { req: req }).then(r => {
       if (r.action === 'fallback') return origGet.apply(self, args);
@@ -116,5 +122,16 @@
     const origCond = PKC.isConditionalMediationAvailable, origUv = PKC.isUserVerifyingPlatformAuthenticatorAvailable;
     try { PKC.isConditionalMediationAvailable = function isConditionalMediationAvailable() { return ask().then(v => v || (origCond ? origCond.call(PKC) : false)); }; } catch (e) { }
     try { PKC.isUserVerifyingPlatformAuthenticatorAvailable = function isUserVerifyingPlatformAuthenticatorAvailable() { return ask().then(v => v || (origUv ? origUv.call(PKC) : false)); }; } catch (e) { }
+    // v1.7: only where the browser has it (never invented): while Keys runs, it adds passkeys on this PC, autofill and related origins
+    const origCaps = PKC.getClientCapabilities;
+    if (typeof origCaps === 'function') try {
+      PKC.getClientCapabilities = function getClientCapabilities() {
+        return Promise.all([origCaps.call(PKC).catch(() => ({})), ask()]).then(([caps, on]) => {
+          const c = Object.assign({}, caps);
+          if (on) { c.passkeyPlatformAuthenticator = true; c.userVerifyingPlatformAuthenticator = true; c.conditionalGet = true; c.relatedOrigins = true; }
+          return c;
+        });
+      };
+    } catch (e) { }
   }
 })();

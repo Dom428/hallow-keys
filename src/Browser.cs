@@ -13,7 +13,7 @@ namespace HallowKeys
         {
             native = new NativeServer(f => OnUi(f), () => vault, () => { if (TestNoShow) TestLog("native: open asked"); else ShowFromTray(); }, msg => { SaveVault(msg); if (selected == null) ShowMain(); else FillList(); Notify("Hallow Keys", msg); });
             native.Visible = i => IsShown(i); native.Used = MarkUsedId; native.NewVaultId = () => vault == null ? null : Vaults.DefaultFor(vault.Data, curVault, Travel);   // v2.1
-            native.HelloOn = () => S.UseHello && Hello.Enabled; native.Log = s => TestLog(s);   // v2.3
+            native.HelloOn = () => S.UseHello && Hello.Enabled; native.Log = s => TestLog(s); RelatedOrigins.Log = s => TestLog(s);   // v2.3, v2.12
             native.Start();
         }
         partial void OnQuit() { if (native != null) native.Stop(); }

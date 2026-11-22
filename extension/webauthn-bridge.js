@@ -4,6 +4,8 @@
 // name (rpId) again and signs; the private key never leaves the app. Only https pages, only the top page or frames with its origin.
 // Passkey autofill (mediation "conditional"): the request waits here, and content.js offers the passkeys in its suggestions under
 // the username box (window.__hallowKeysPasskeys is shared with content.js, never with the page).
+// v1.7 (Keys 2.12): a site that asks for a security key or a phone gets "Use another device" first; that row says how to hand the
+// sign-in to your phone (Windows' window: "iPhone, iPad or Android device", scan the QR code).
 (function () {
   'use strict';
   if (window.__hallowKeysBridge) return; window.__hallowKeysBridge = true;
@@ -73,7 +75,9 @@
     if (ev.type === 'click' && document.elementFromPoint(ev.clientX, ev.clientY) !== me.host) return false;
     return true;
   }
-  const fallbackRow = (p, rid) => ({ hk: 'fallback', icon: '\u{1F4F1}', title: 'Use another device or the browser\'s own', sub: 'Your phone, a security key or Windows Hello', action: () => { p.close(true); reply(rid, { action: 'fallback' }); } });
+  const fallbackRow = (p, rid, main) => ({ hk: 'fallback', main: !!main, icon: '\u{1F4F1}', title: 'Use another device or the browser\'s own', sub: 'Your phone (scan the QR code Windows shows), a security key or Windows Hello', action: () => { p.close(true); reply(rid, { action: 'fallback' }); } });
+  // v1.7: the site asked for a security key or a phone rather than a passkey on this PC
+  const wantsOther = q => q.attachment === 'cross-platform' || (Array.isArray(q.hints) && (q.hints[0] === 'security-key' || q.hints[0] === 'hybrid'));
   const cancelRow = (p, rid) => ({ hk: 'cancel', icon: '✕', title: 'Cancel', action: () => { p.close(true); reply(rid, { action: 'error', name: 'NotAllowedError', msg: 'The operation either timed out or was not allowed.' }); } });
   const notAllowed = (rid, r) => reply(rid, { action: 'error', name: (r && r.error) || 'NotAllowedError', msg: (r && r.msg) || 'The operation either timed out or was not allowed.' });
 
@@ -94,19 +98,22 @@
     if (r.error) { notAllowed(rid, r); return; }   // wrong rpId, http... (checked in the app)
     const who = q.userName || q.displayName || 'this account';
     const p = prompt(rid, 'Save a passkey?', '', [], () => notAllowed(rid));
-    const ready = info => p.render('Save a passkey in Hallow Keys?', 'For ' + who + ' on ' + (info.rpId || q.rpId) + '. It stays in your vault and syncs with it.', [
-      { hk: 'save', main: true, icon: '\u{1F511}', title: 'Save passkey in Hallow Keys', sub: who, action: async () => {
+    const other = wantsOther(q);
+    const ready = info => p.render('Save a passkey in Hallow Keys?', 'For ' + who + ' on ' + (info.rpId || q.rpId) + '. It stays in your vault and syncs with it.', (other ? [{ msg: 'This site asked for a security key or your phone.', hk: 'asked-other' }, fallbackRow(p, rid, true), { sep: true }] : []).concat([
+      { hk: 'save', main: !other, icon: '\u{1F511}', title: 'Save passkey in Hallow Keys', sub: who, action: async () => {
         p.busy = true; p.render('Saving the passkey...', 'Hallow Keys is making a new key for ' + (info.rpId || q.rpId) + '.', []);
         const c = await send(Object.assign({ type: 'pk-create' }, q)); p.close(true);
         if (c && c.ok) reply(rid, { action: 'cred', cred: c }); else notAllowed(rid, c);
-      } }, { sep: true }, fallbackRow(p, rid), cancelRow(p, rid)]);
+      } }, { sep: true }].concat(other ? [] : [fallbackRow(p, rid)]).concat([cancelRow(p, rid)])));
     if (r.locked) whenLocked(p, rid, check, ready); else ready(r);
   }
   function getRows(p, rid, q, r) {
     const items = r.items || []; const rows = [];
-    items.forEach((it, i) => rows.push({ hk: 'pick-' + i, main: i === 0, icon: '\u{1F511}', title: it.userName || it.displayName || it.title, sub: it.title + (it.displayName && it.displayName !== it.userName ? ' - ' + it.displayName : ''), action: () => use(p, rid, q, it.id) }));
-    if (!rows.length) rows.push({ msg: 'No passkeys for ' + (r.rpId || q.rpId) + ' in Hallow Keys.', hk: 'none' });
-    rows.push({ sep: true }, fallbackRow(p, rid), cancelRow(p, rid));
+    const other = wantsOther(q);
+    if (other) rows.push({ msg: 'This site asked for a security key or your phone.', hk: 'asked-other' }, fallbackRow(p, rid, true), { sep: true });
+    items.forEach((it, i) => rows.push({ hk: 'pick-' + i, main: i === 0 && !other, icon: '\u{1F511}', title: it.userName || it.displayName || it.title, sub: it.title + (it.displayName && it.displayName !== it.userName ? ' - ' + it.displayName : ''), action: () => use(p, rid, q, it.id) }));
+    if (!items.length) rows.push({ msg: 'No passkeys for ' + (r.rpId || q.rpId) + ' in Hallow Keys.', hk: 'none' });
+    rows.push({ sep: true }); if (!other) rows.push(fallbackRow(p, rid)); rows.push(cancelRow(p, rid));
     p.render('Sign in with a passkey', 'Hallow Keys - ' + (r.rpId || q.rpId), rows);
   }
   async function use(p, rid, q, id) {

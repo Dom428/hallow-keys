@@ -214,7 +214,9 @@ namespace HallowKeys
             var url = S(m, "url"); var rpId = NormalRpId(S(m, "rpId"));
             var origin = OriginOf(url);
             if (origin == null) return Err("SecurityError", "Passkeys only work on secure (https) pages");
-            var why = RpIdProblem(rpId, url); if (why != null) return Err("SecurityError", why);
+            var why = RpIdProblem(rpId, url);
+            if (why != null && RelatedOrigins.RpIdShape(rpId) && RelatedOrigins.Allowed(rpId, origin)) why = null;   // v2.12: the page is listed in the rpId's /.well-known/webauthn (checked on the pipe's thread)
+            if (why != null) return Err("SecurityError", why);
             if (v == null) return new Dictionary<string, object> { { "ok", false }, { "running", true }, { "locked", true }, { "msg", "Hallow Keys is locked" } };
             var allow = new HashSet<string>(L(m, "allow"));
             var mine = For(shown, rpId).ToList();

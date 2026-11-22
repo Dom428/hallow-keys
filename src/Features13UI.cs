@@ -15,11 +15,13 @@ namespace HallowKeys
         partial void ExtraNav2(StackPanel nav, Action<string, string, string, int> navBtn)
         {
             navBtn("duplicates", "clone", "Duplicates", Organize.Duplicates(Shown()).Sum(g => g.Count - 1));   // v2.1: Trash moved up, next to Vault and Favourites
+            ExtraNav212(navBtn);   // v2.12: Passkeys on Windows
         }
         partial void ExtraPage2(string v, DockPanel dock, ref bool handled)
         {
             if (v == "trash") { dock.Children.Add(TrashPage()); handled = true; }
             else if (v == "duplicates") { dock.Children.Add(DuplicatesPage()); handled = true; }
+            else if (v == "passkeys-windows") { dock.Children.Add(PasskeysWindowsPage()); handled = true; }   // v2.12
         }
         partial void SnapExtra2(Action<MainWindow, string> save)
         {

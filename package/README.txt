@@ -9,6 +9,15 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.12 - PASSKEYS ON WINDOWS
+- Your Microsoft account's passkey works through Hallow Keys: Microsoft signs you in on login.live.com with
+  passkeys of login.microsoft.com; Keys now allows that after checking Microsoft's own published list of its
+  sign-in sites (the same "related origins" check Chrome and Edge make). Reload the extension after updating.
+- New page in the sidebar: Passkeys on Windows - where Keys answers passkey requests, adding a passkey to your
+  Microsoft account, handing a sign-in to your phone (Windows' QR code), and why Keys isn't in Windows 11's own
+  passkey list yet (Windows only accepts packaged, signed apps there).
+- The extension shows "Use another device" first when a site asks for a security key or your phone.
+
 WHAT'S NEW IN 2.11 - HALLOW AUTHENTICATOR
 - Move (or copy) your 2FA codes to Hallow Authenticator on your phone: Settings > Hallow Authenticator > Send my 2FA
   codes to my phone. Scan the code Keys shows with the app (needs Hallow Remote 1.19 with HTTPS). End-to-end sealed;

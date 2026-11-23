@@ -19,6 +19,7 @@ WHAT'S NEW IN 2.14 - DON'T LOSE ACCESS
 - After a NordPass import: what was in the file and what is in Hallow Keys (by type, 2FA, no password).
   Keep NordPass for about a month before you delete it.
 - Fixed: a vault unlocked without typing (Windows Hello) on a long-idle PC no longer locks again at once.
+
 WHAT'S NEW IN 2.13 - PASSKEYS IN HALLOW BROWSER
 - Hallow Browser 1.15 hands websites' passkey requests to Hallow Keys - no extension needed there. Its prompt
   (under the address bar) saves a passkey in your vault, signs in with one, or hands the request to Windows.

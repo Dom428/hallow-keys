@@ -9,6 +9,13 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.13 - PASSKEYS IN HALLOW BROWSER
+- Hallow Browser 1.15 hands websites' passkey requests to Hallow Keys - no extension needed there. Its prompt
+  (under the address bar) saves a passkey in your vault, signs in with one, or hands the request to Windows.
+- Keys checks that the other end of its private link really is Hallow Browser, with the same rules as for the
+  extension: secure (https) pages, the passkey's own site (or Microsoft-style related sites), nothing while locked.
+- The Passkeys on Windows page explains it.
+
 WHAT'S NEW IN 2.12 - PASSKEYS ON WINDOWS
 - Your Microsoft account's passkey works through Hallow Keys: Microsoft signs you in on login.live.com with
   passkeys of login.microsoft.com; Keys now allows that after checking Microsoft's own published list of its

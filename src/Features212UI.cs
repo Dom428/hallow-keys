@@ -1,6 +1,7 @@
 ﻿// Hallow Keys 2.12 - "Passkeys on Windows", the page: where Keys answers passkey requests today (the browser extension, Microsoft's
 // sign-in included through related origins), what Windows 11's own passkey provider list needs that Keys doesn't have yet (a package
-// identity: a signed MSIX), how to hand a sign-in to your phone, and Hallow Browser. Read-only checks of Windows; nothing registered.
+// identity: a signed MSIX), how to hand a sign-in to your phone, and Hallow Browser (2.13: passes passkey requests to Keys since its
+// 1.15). Read-only checks of Windows; nothing registered.
 using System;
 using System.IO;
 using System.Linq;
@@ -33,7 +34,7 @@ namespace HallowKeys
 
             // 1. what works now
             var s1 = section("puzzle-piece", "In your browsers - works now");
-            para(s1, "When a website asks to make or use a passkey in Chrome, Edge, Brave, Opera, Opera GX, Vivaldi, Arc, Chromium, Yandex or Firefox, the Hallow Keys extension shows Hallow Keys' own prompt: save the passkey here, pick one of yours, or hand the request to Windows (your phone, a security key or Windows Hello). The key stays in your vault and signs here, in the app.");
+            para(s1, "When a website asks to make or use a passkey in Hallow Browser (1.15 or newer, no extension needed - see below), or in Chrome, Edge, Brave, Opera, Opera GX, Vivaldi, Arc, Chromium, Yandex or Firefox with the Hallow Keys extension, you get Hallow Keys' prompt: save the passkey here, pick one of yours, or hand the request to Windows (your phone, a security key or Windows Hello). The key stays in your vault and signs here, in the app.");
             var st = new TextBlock { TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 8) };
             st.Inlines.Add(new System.Windows.Documents.Run(NativeHost.Registered || Snap.On ? "Browsers connected." : "Browsers not connected yet.") { Foreground = NativeHost.Registered || Snap.On ? B("#6ED28C") : B("#F0BE5A"), FontWeight = FontWeights.SemiBold });
             st.Inlines.Add(new System.Windows.Documents.Run("  " + n + " passkey" + (n == 1 ? "" : "s") + " in the vaults this PC shows.") { Foreground = Muted });
@@ -45,9 +46,9 @@ namespace HallowKeys
             var s2 = section("key", "Your Microsoft account");
             para(s2, "Microsoft's passkeys belong to login.microsoft.com, but you sign in on login.live.com (or login.microsoftonline.com for work and school). Since 2.12 Hallow Keys allows that only after checking Microsoft's own published list of its sign-in sites (login.microsoft.com/.well-known/webauthn) - the same check Chrome and Edge make - so no other site can borrow the passkey.");
             steps(s2, new[] {
-                "Make sure the Hallow Keys extension is on in your browser and Hallow Keys is unlocked (after updating, reload the extension once on your browser's extensions page).",
+                "Make sure Hallow Keys is unlocked, and use Hallow Browser or a browser with the Hallow Keys extension on (after updating, reload the extension once on your browser's extensions page).",
                 "Open your Microsoft account's security settings in that browser and add a new way to sign in: a passkey (Microsoft may call it \"face, fingerprint, PIN or security key\").",
-                "Hallow Keys' prompt appears at the top right: click Save passkey in Hallow Keys.",
+                "Hallow Keys' prompt appears (in Hallow Browser under the address bar, with the extension at the top right of the page): click Save passkey in Hallow Keys.",
                 "Next time, on Microsoft's sign-in page choose to sign in with a passkey (or click the email box and pick it in the suggestions), then pick it in Hallow Keys' prompt." });
             muted(s2, "Signing in to Windows itself (the lock screen) can't use a passkey from any password manager - that stays Windows Hello or your password.");
 
@@ -55,7 +56,7 @@ namespace HallowKeys
             var s3 = section("shield-halved", "Windows' own passkey list - not yet");
             para(s3, "Windows 11 can let a password manager answer passkey requests for every app and browser, listed under Settings > Accounts > Passkeys > Advanced options. " + WindowsPasskeys.Summary(winPk));
             para(s3, "Hallow Keys can't join that list yet: Windows only accepts a passkey manager that is installed as a packaged app with its own identity (an MSIX package signed with a code-signing certificate Windows trusts, or from the Microsoft Store). Hallow Keys is a plain program you unzip, without a certificate, so Windows refuses it - Hallow Keys won't appear in that list, and there's nothing to switch on there for now.");
-            muted(s3, "This copy of Hallow Keys " + (winPk.Packaged ? "runs with a package identity." : "runs without a package identity (as expected).") + " Until it can be packaged and signed, the extension above is how Hallow Keys answers passkey requests.");
+            muted(s3, "This copy of Hallow Keys " + (winPk.Packaged ? "runs with a package identity." : "runs without a package identity (as expected).") + " Until it can be packaged and signed, Hallow Browser and the extension above are how Hallow Keys answers passkey requests.");
 
             // 4. phone
             var s4 = section("mobile-screen", "Hand a sign-in to your phone");
@@ -68,7 +69,12 @@ namespace HallowKeys
 
             // 5. Hallow Browser
             var s5 = section("globe", "Hallow Browser");
-            para(s5, "Hallow Browser fills logins from Hallow Keys over the same private link the extension uses, but it doesn't pass passkey requests to Hallow Keys yet - there, websites get Windows' own passkey window (your phone, a security key or Windows Hello). Hallow Keys 2.12 is ready for it; Hallow Browser needs an update to use it.");
+            para(s5, "Hallow Browser 1.15 and newer pass passkey requests to Hallow Keys - no extension needed. It talks to this app over the same private link it uses for logins (the per-session secret only your Windows account can read), and Hallow Keys checks that the other end really is Hallow Browser. The site's address comes from the browser itself, never from the page, and Hallow Keys makes the same checks as for the extension: secure (https) pages only, the passkey's site must be the page's own domain or list the page in its /.well-known/webauthn (Microsoft's sign-in), and nothing is signed while Keys is locked.");
+            steps(s5, new[] {
+                "Keep Hallow Keys running and unlocked. In Hallow Browser, Settings > Hallow Keys > Use Hallow Keys for passkeys is on by default.",
+                "When a site asks for a passkey, Hallow Browser shows Hallow Keys' prompt under the address bar: save it here, pick one of yours, or Use another device or the browser's own (Windows' window: your phone, a security key or Windows Hello).",
+                "On sign-in pages that offer passkeys in the email box, the key in the address bar lists your passkeys for the site too." });
+            muted(s5, "Hallow Keys closed, or the setting off: Hallow Browser leaves passkeys to Windows' own window, as before. Frames from other sites inside a page get Hallow Keys only when the page allows them passkeys (the publickey-credentials permission), as in other browsers.");
             return sv;
         }
 

@@ -162,9 +162,19 @@ namespace HallowKeys
                 {
                     var line = t.Result; int sp = line.IndexOf(' ');
                     var given = sp > 0 ? line.Substring(0, sp) : "";
+                    string body = sp > 0 ? line.Substring(sp + 1) : "", type = "", client = "", refused = null, via = null;
+                    if (SameSecret(given))
+                    {
+                        // v2.13: who is asking (the extension's host or Hallow Browser - Windows names the pipe's client process)
+                        try { var m0 = js.Deserialize<Dictionary<string, object>>(body); if (m0 != null) { type = S(m0, "type"); client = S(m0, "client"); } } catch { }
+                        var kind = PipeCallers.Kind(PipeCallers.ImageOf(p));
+                        refused = PipeCallers.Refuse(type, client, kind, PipeCallers.Strict); via = PipeCallers.Label(client, kind);
+                        if (type.StartsWith("passkey-")) Log("passkey: " + type + " from " + (via ?? (kind == "keys" ? "the extension" : kind)) + (refused != null ? " - refused" : ""));
+                    }
                     if (!SameSecret(given)) reply = "{\"ok\":false,\"msg\":\"not allowed\"}";
-                    else if (Prepare212(line.Substring(sp + 1)) && !HelloFirst(line.Substring(sp + 1))) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", "Windows Hello didn't confirm it's you" } });
-                    else reply = onUi(() => Answer(line.Substring(sp + 1)));
+                    else if (refused != null) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", refused } });
+                    else if (Prepare212(body) && !HelloFirst(body, via)) reply = Json(new Dictionary<string, object> { { "ok", false }, { "error", "NotAllowedError" }, { "msg", "Windows Hello didn't confirm it's you" } });
+                    else reply = onUi(() => Answer(body, via));
                 }
                 var b = Encoding.UTF8.GetBytes(reply.Replace("\r", " ").Replace("\n", " ") + "\n"); p.Write(b, 0, b.Length); p.Flush(); Array.Clear(b, 0, b.Length);
                 try { p.WaitForPipeDrain(); } catch { }
@@ -192,23 +202,26 @@ namespace HallowKeys
         // v2.12: a passkey request from a related origin (Microsoft: login.live.com asking for login.microsoft.com) - the rpId's
         // /.well-known/webauthn is looked up here, off the window's thread; the window then only reads the remembered answer
         bool Prepare212(string json) { RelatedOrigins.Prepare(json); return true; }
-        bool HelloFirst(string json)
+        bool HelloFirst(string json, string via = null)
         {
             string type; try { type = S(js.Deserialize<Dictionary<string, object>>(json), "type"); } catch { return true; }
             if (type != "passkey-get" && type != "passkey-create") return true;
             if (!HelloOn()) return true;
-            string err; var ok = Hello.Verify(type == "passkey-get" ? "Sign in with a passkey from Hallow Keys" : "Save a passkey in Hallow Keys", out err);
+            string err; var ok = Hello.Verify((type == "passkey-get" ? "Sign in with a passkey from Hallow Keys" : "Save a passkey in Hallow Keys") + (via != null ? " (" + via + ")" : ""), out err);
             Log("passkey: Windows Hello " + (ok ? "ok" : "refused"));
             return ok;
         }
         // runs on the window's thread
-        public string Answer(string json)
+        public string Answer(string json) { return Answer(json, null); }
+        // v2.13: via = "Hallow Browser" when the pipe's client really is Hallow Browser (null for the extension's host)
+        public string Answer(string json, string via)
         {
             Dictionary<string, object> m; try { m = js.Deserialize<Dictionary<string, object>>(json); } catch { return "{\"ok\":false}"; }
+            if (m == null) return "{\"ok\":false}";
             var type = S(m, "type"); var v = vault(); var shown = v == null ? new List<Item>() : v.Data.Items.Where(Visible).ToList();
             if (type == "open") { showApp(); return Json(new Dictionary<string, object> { { "ok", true }, { "running", true } }); }
             if (type == "status") return Json(new Dictionary<string, object> { { "ok", true }, { "running", true }, { "locked", v == null } });
-            if (type.StartsWith("passkey-")) return Json(Passkeys.Answer(type, m, v, shown, Visible, Used, NewVaultId, saved));   // v2.3 (checks the page and rpId before "locked")
+            if (type.StartsWith("passkey-")) return Json(Passkeys.Answer(type, m, v, shown, Visible, Used, NewVaultId, saved, via));   // v2.3 (checks the page and rpId before "locked")
             if (v == null) return Json(new Dictionary<string, object> { { "ok", false }, { "running", true }, { "locked", true }, { "msg", "Hallow Keys is locked" } });
             var url = S(m, "url");
             if (Domain.Parse(url) == null) return Json(new Dictionary<string, object> { { "ok", false }, { "msg", "Not a web page" } });

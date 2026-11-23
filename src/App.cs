@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.12.0.0")]
-[assembly: AssemblyFileVersion("2.12.0.0")]
+[assembly: AssemblyVersion("2.13.0.0")]
+[assembly: AssemblyFileVersion("2.13.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.12";
+        public const string Version = "2.13";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)

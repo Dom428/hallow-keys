@@ -64,9 +64,11 @@ namespace HallowKeys
         }
         public static string NormalRpId(string rpId) { return Domain.Ascii(rpId ?? "") ?? ""; }
 
-        public static string ClientData(string type, byte[] challenge, string origin)
+        public static string ClientData(string type, byte[] challenge, string origin) { return ClientData(type, challenge, origin, null); }
+        // v2.13: a cross-origin frame (Hallow Browser forwards one only when the frame has the publickey-credentials-* permission policy)
+        public static string ClientData(string type, byte[] challenge, string origin, string topOrigin)
         {
-            return "{\"type\":\"" + type + "\",\"challenge\":\"" + B64u(challenge) + "\",\"origin\":\"" + origin + "\",\"crossOrigin\":false}";
+            return "{\"type\":\"" + type + "\",\"challenge\":\"" + B64u(challenge) + "\",\"origin\":\"" + origin + "\",\"crossOrigin\":" + (topOrigin != null ? "true,\"topOrigin\":\"" + topOrigin + "\"" : "false") + "}";
         }
 
         // ---- keys (CNG). The private key is kept as the 32-byte scalar d; the public key as the 65-byte uncompressed point 04|x|y
@@ -209,11 +211,14 @@ namespace HallowKeys
             var a = o as System.Collections.IEnumerable; if (a == null || o is string) return new List<string>();
             return a.Cast<object>().Where(x => x != null).Select(x => x.ToString()).Take(200).ToList();
         }
-        public static Dictionary<string, object> Answer(string type, Dictionary<string, object> m, Vault v, List<Item> shown, Func<Item, bool> visible, Action<string> used, Func<string> newVaultId, Action<string> saved)
+        public static Dictionary<string, object> Answer(string type, Dictionary<string, object> m, Vault v, List<Item> shown, Func<Item, bool> visible, Action<string> used, Func<string> newVaultId, Action<string> saved, string via = null)
         {
             var url = S(m, "url"); var rpId = NormalRpId(S(m, "rpId"));
             var origin = OriginOf(url);
             if (origin == null) return Err("SecurityError", "Passkeys only work on secure (https) pages");
+            // v2.13: the tab's address when the request comes from a frame of another origin (https too; same origin = not cross-origin)
+            string topOrigin = null; var topUrl = S(m, "topUrl");
+            if (topUrl.Length > 0) { topOrigin = OriginOf(topUrl); if (topOrigin == null) return Err("SecurityError", "Passkeys only work on secure (https) pages"); if (topOrigin == origin) topOrigin = null; }
             var why = RpIdProblem(rpId, url);
             if (why != null && RelatedOrigins.RpIdShape(rpId) && RelatedOrigins.Allowed(rpId, origin)) why = null;   // v2.12: the page is listed in the rpId's /.well-known/webauthn (checked on the pipe's thread)
             if (why != null) return Err("SecurityError", why);
@@ -239,7 +244,7 @@ namespace HallowKeys
                     if (d == null || point == null || credId == null) return Err("NotAllowedError", "That passkey is damaged");
                     try
                     {
-                        var cd = Encoding.UTF8.GetBytes(ClientData("webauthn.get", challenge, origin));
+                        var cd = Encoding.UTF8.GetBytes(ClientData("webauthn.get", challenge, origin, topOrigin));
                         var ad = AuthData(rpId, (byte)(UP | UV | BE | BS), null, null);
                         byte[] hash; using (var h = SHA256.Create()) hash = h.ComputeHash(cd);
                         var sig = Sign(d, point, ad.Concat(hash).ToArray());
@@ -266,10 +271,10 @@ namespace HallowKeys
                     var old = mine.Where(i => Val(i, "userHandle") == B64u(uh)).ToList();
                     Vaults.Put(it, newVaultId()); v.Data.Items.Add(it);
                     foreach (var o in old) Organize.MoveToTrash(v.Data, o, DateTime.Now);
-                    var cd = Encoding.UTF8.GetBytes(ClientData("webauthn.create", challenge, origin));
+                    var cd = Encoding.UTF8.GetBytes(ClientData("webauthn.create", challenge, origin, topOrigin));
                     var ad = AuthData(rpId, (byte)(UP | UV | BE | BS | AT), credId, point);
                     used(it.Id);
-                    saved("Saved a passkey for " + rpId + (old.Count > 0 ? " (the old one for that account went to the trash)" : "") + ".");
+                    saved("Saved a passkey for " + rpId + (via != null ? " from " + via : "") + (old.Count > 0 ? " (the old one for that account went to the trash)" : "") + ".");
                     return new Dictionary<string, object> { { "ok", true }, { "id", B64u(credId) }, { "clientDataJSON", B64u(cd) }, { "attestationObject", B64u(AttestationNone(ad)) },
                         { "authenticatorData", B64u(ad) }, { "publicKey", B64u(Spki(point)) }, { "publicKeyAlgorithm", Es256 }, { "transports", new[] { "hybrid", "internal" } }, { "authenticatorAttachment", "platform" } };
                 }

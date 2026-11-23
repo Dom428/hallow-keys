@@ -18,7 +18,7 @@ namespace HallowKeys
         public const string Confirm = "ERASE";
         static readonly string[] FileNames = { "vault.hkvault", "vault.hkvault.bak", "vault.hkvault.tmp", "phone.bin", "hello.bin", "icons.hkcache" };
         static readonly string[] Patterns = { "secret-key-*.bin", "vault-before-joining-*.hkvault" };
-        static readonly string[] DirNames = { "versions", "sync-merged", "shared-merged" };
+        static readonly string[] DirNames = { "versions", "sync-merged", "shared-merged", "backups" };   // v2.14: backups = the automatic backups' own folder (a folder you picked is left alone)
         // moves the vault's files aside; returns the folder (null when there was nothing to move)
         public static string MoveAside(DateTime now)
         {
@@ -48,6 +48,7 @@ namespace HallowKeys
             string dest;
             try { StopSync(); dest = StartOver.MoveAside(DateTime.Now); }
             catch (Exception e) { return "error couldn't move the old vault aside (" + e.Message + ") - close anything using the HallowKeys folder and try again"; }
+            S.SafetyRecovery = S.SafetyRecoveryHow = S.SafetyKit = S.SafetyDoneAt = S.SafetySnoozeUntil = S.LastAutoBackupHash = S.LastAutoBackup = S.AutoBackupError = S.LastBackupTest = S.LastBackupTestResult = "";   // v2.14: the new vault starts its own checklist
             S.SyncOn = false; S.LastSync = ""; S.UseHello = false; S.PhoneCopy = false; S.PhoneEdit = false; S.SshKeyIds.Clear(); S.LastLeakCheck = ""; S.Save();
             Hello.Disable(); PhoneCopy.Remove(); syncState = "off";
             TestLog("start over: " + (dest == null ? "nothing to move" : Path.GetFileName(dest)));

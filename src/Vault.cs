@@ -109,6 +109,7 @@ namespace HallowKeys
         [DataMember] public List<string> ExpiryNotified = new List<string>();          // v1.6: expiry reminders already shown (item|field|date|stage)
         [DataMember] public List<Tombstone> Tombstones = new List<Tombstone>();        // v2.0: items deleted for good (so another PC deletes them too, not brings them back)
         [DataMember(EmitDefaultValue = false)] public byte[] AuthMirrorKey;            // v2.11: the PC mirror's key for Hallow Authenticator (null = off)
+        [DataMember(EmitDefaultValue = false)] public RecoveryCheck RecoveryCheck;     // v2.14: 4 positions of the recovery code + a slow hash of those 4 characters (never the code)
         [DataMember(EmitDefaultValue = false)] public byte[] AccountKey;               // v2.0: the Secret Key (only ever inside the encrypted vault), so a PC that's unlocked learns a new one
         [DataMember(EmitDefaultValue = false)] public List<VaultInfo> Vaults;          // v2.1: your vaults (Personal, Gaming, Work...): name, colour, safe for travel; deleted ones stay as markers
         [DataMember(EmitDefaultValue = false)] public List<UsageMark> Usage;
@@ -159,6 +160,16 @@ namespace HallowKeys
         public bool NeedsUpgrade { get { return !UsesArgon2 || !UsesSecretKey; } }       // older protection: offer the upgrade
         public byte[] VaultId { get { return (byte[])vaultId.Clone(); } }
         public byte[] SecretKeyId { get { return UsesSecretKey ? (byte[])skId.Clone() : null; } }
+        // v2.14: is this the vault's current recovery code? (unwraps the data key with it in memory and compares - nothing is changed)
+        public bool IsRecoveryCode(string code)
+        {
+            if (recWrap == null || recSalt == null || dataKey == null) return false;
+            var b = RecoveryBytes(code); if (b.Length == 0) return false;
+            byte[] k = null, dk = null;
+            try { k = Kdf.Derive(b, recSalt, recIterations); dk = Gcm.Open(k, recWrap, AadRecovery()); return dk.Length == dataKey.Length && dk.SequenceEqual(dataKey); }
+            catch { return false; }
+            finally { Gcm.Wipe(b); if (k != null) Gcm.Wipe(k); if (dk != null) Gcm.Wipe(dk); }
+        }
         public string KdfDescription { get { return kdf == KdfArgon2id ? "Argon2id (" + (argM / 1024) + " MiB, " + argT + " passes, " + argP + " lanes)" : "PBKDF2-SHA256 (" + iterations.ToString("N0") + " rounds)"; } }
         public bool KeepVersions = true;                            // the main vault keeps encrypted snapshots in versions\ (Restore an older version)
         public bool Tracking = true;                                // sync revisions are kept up to date on every save (not for exports, which share the items)
@@ -237,6 +248,7 @@ namespace HallowKeys
                 try { flags = (byte)(flags & ~FlagLegacyRecovery); recWrap = Gcm.Seal(rk, dataKey, AadRecovery()); recSalt = s; recIterations = Kdf.MinIterations; recTime = DateTime.UtcNow.Ticks; } finally { Gcm.Wipe(rk); }
             }
             finally { Gcm.Wipe(bytes); }
+            try { Data.RecoveryCheck = RecoveryCheck.Make(code, recTime); } catch { Data.RecoveryCheck = null; }   // v2.14: "type 4 characters of it" (the safety checklist)
             return pretty;
         }
         // the code as typed: case and dashes / spaces don't matter

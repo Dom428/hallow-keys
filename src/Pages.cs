@@ -117,6 +117,9 @@ namespace HallowKeys
             var eb = new Button { Content = "Export backup", Style = St("Btn"), Margin = new Thickness(0, 0, 8, 0) }; eb.Click += (s, e) => ExportBackup();
             var rb = new Button { Content = "Restore backup", Style = St("Btn") }; rb.Click += (s, e) => RestoreBackup();
             row.Children.Add(eb); row.Children.Add(rb); bk.Children.Add(row); sp.Children.Add(Card(bk));
+            var ab = new StackPanel();   // v2.14: automatic encrypted backups
+            ab.Children.Add(new TextBlock { Text = "Automatic backups", FontWeight = FontWeights.SemiBold, FontSize = 14 });
+            BackupControls(ab, false); sp.Children.Add(Card(ab));
             var ex = new StackPanel();
             ex.Children.Add(new TextBlock { Text = "Export", FontWeight = FontWeights.SemiBold, FontSize = 14 });
             ex.Children.Add(new TextBlock { Text = "Encrypted export: your items in the same encrypted format, locked with a separate password you pick now - handy for moving to another PC without sharing your master password. Restore backup opens it.", Foreground = Muted, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 4, 0, 4) });
@@ -134,8 +137,8 @@ namespace HallowKeys
             Import.Result r;
             try { r = Import.FromFile(dlg.FileName); } catch (VaultException e) { Toast(e.Message, true); return; } catch (Exception e) { Toast("Couldn't read that file: " + e.Message, true); return; }
             if (MessageBox.Show(this, "Found " + r.Items.Count + " items" + (r.Source != null ? " (" + r.Source + ")" : "") + (r.Skipped > 0 ? ", " + r.Skipped + " skipped" : "") + ". Add them to your vault?", "Import", MessageBoxButton.YesNo) != MessageBoxResult.Yes) return;
-            var added = Import.Merge(vault.Data, r); SaveVault(added + " items imported.");
-            ShowMain();
+            var missing = new List<string>(); var cmp = ImportAndCompare(r, missing);   // v2.14: then the comparison (Don't lose access > Leaving NordPass)
+            view = "safety"; selected = null; editing = null; ShowMain(); Toast(cmp.Added + " items imported - compare them below." + (missing.Count > 0 ? " Not in the vault: " + string.Join(", ", missing.Take(5)) + (missing.Count > 5 ? "..." : "") : ""), missing.Count > 0);
             if (MessageBox.Show(this, "Delete the export file now?\n\n" + dlg.FileName + "\n\nIt has your passwords in plain text. It goes to the Recycle Bin - empty the bin afterwards to be sure.", "Import", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
                 try { Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(dlg.FileName, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin); Toast("The export file is in the Recycle Bin."); }
                 catch (Exception e) { Toast("Couldn't delete it: " + e.Message, true); }

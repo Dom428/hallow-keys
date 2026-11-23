@@ -101,6 +101,7 @@ namespace HallowKeys
             tt.Children.Add(new TextBlock { Text = basis.Count + " item" + (basis.Count == 1 ? "" : "s") + (nv > 1 ? " in " + nv + " vaults" : "") + (Travel ? "  -  Travel Mode: only vaults safe for travel" : ""), Foreground = Travel ? B("#F0BE5A") : Muted });
             trow.Children.Add(tt);
             DockPanel.SetDock(trow, Dock.Top); main.Children.Add(trow);
+            if (view == "all" && curVault == null) SafetyBanner(main);   // v2.14: "Don't lose access" until the 3 steps are done
             // category tabs
             var tabs = new WrapPanel { Margin = new Thickness(0, 4, 0, 0) };
             foreach (var t in Vaults.Tabs)

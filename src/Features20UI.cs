@@ -358,7 +358,7 @@ namespace HallowKeys
             sp.Children.Add(new Border { Background = Brushes.White, CornerRadius = new CornerRadius(8), Child = KitVisual(code, secretKey, S.SyncFolder) });
             var row = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 14, 0, 0) };
             var print = new Button { Content = "Print", Style = St("Accent"), Margin = new Thickness(0, 0, 8, 0) };
-            print.Click += (s, e) => { var pd = new PrintDialog(); if (pd.ShowDialog() == true) { var v = KitVisual(code, secretKey, S.SyncFolder); v.Measure(new Size(pd.PrintableAreaWidth, double.PositiveInfinity)); v.Arrange(new Rect(new Point(40, 40), v.DesiredSize)); pd.PrintVisual(v, kit ? "Hallow Keys Emergency Kit" : "Hallow Keys recovery sheet"); } };
+            print.Click += (s, e) => { var pd = new PrintDialog(); if (pd.ShowDialog() == true) { var v = KitVisual(code, secretKey, S.SyncFolder); v.Measure(new Size(pd.PrintableAreaWidth, double.PositiveInfinity)); v.Arrange(new Rect(new Point(40, 40), v.DesiredSize)); pd.PrintVisual(v, kit ? "Hallow Keys Emergency Kit" : "Hallow Keys recovery sheet"); if (vault != null) { MarkKit(); if (code != null) MarkRecovery("kit"); } } };   // v2.14: printed = the checklist's step 3 (and 1 when the code is on it)
             var done = new Button { Content = "I've saved it", Style = St("Btn") }; done.Click += (s, e) => w.Close();
             row.Children.Add(print); row.Children.Add(done); sp.Children.Add(row);
             w.Content = sp;

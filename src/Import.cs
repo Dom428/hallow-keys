@@ -178,13 +178,15 @@ namespace HallowKeys
             foreach (var f in r.Folders) if (!into.Folders.Contains(f)) into.Folders.Add(f);
             foreach (var it in r.Items)
             {
-                if (into.Items.Any(x => x.Type == it.Type && x.Title == it.Title && x.Username == it.Username && x.Password == it.Password && (x.Urls.FirstOrDefault() ?? "") == (it.Urls.FirstOrDefault() ?? "") && x.CardNumber == it.CardNumber && x.Notes == it.Notes && FieldsKey(x) == FieldsKey(it))) continue;
+                if (into.Items.Any(x => Same(x, it))) continue;
                 if (it.Folder.Length > 0 && !into.Folders.Contains(it.Folder)) into.Folders.Add(it.Folder);
                 into.Items.Add(it); added++;
             }
             foreach (var t in r.Templates) if (!into.Templates.Any(x => x.Id == t.Id)) into.Templates.Add(t);   // v1.6
             return added;
         }
+        // v2.14: the merge's rule for "the same item" (also used by the comparison after an import)
+        public static bool Same(Item x, Item it) { return x.Type == it.Type && x.Title == it.Title && x.Username == it.Username && x.Password == it.Password && (x.Urls.FirstOrDefault() ?? "") == (it.Urls.FirstOrDefault() ?? "") && x.CardNumber == it.CardNumber && x.Notes == it.Notes && FieldsKey(x) == FieldsKey(it); }
         static string FieldsKey(Item i) { return string.Join("\u0001", i.Fields.Where(f => f.Value.Length > 0).Select(f => f.Label + "\u0002" + f.Value).OrderBy(s => s, StringComparer.Ordinal)); }
     }
 }

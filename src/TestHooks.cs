@@ -13,6 +13,7 @@ namespace HallowKeys
         {
             Init21();   // v2.1: list keys, copies count as "used"
             Init26();   // v2.6: the command line's pipe, the SSH agent if it's on
+            Init214();  // v2.14: automatic backups and the safety reminder
             if (KeysSettings.TestDir == null) return;
             var pw = Environment.GetEnvironmentVariable("HALLOW_KEYS_TEST_UNLOCK");
             if (string.IsNullOrEmpty(pw)) return;

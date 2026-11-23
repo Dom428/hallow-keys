@@ -20,14 +20,14 @@ using WF = System.Windows.Forms;
 [assembly: AssemblyTitle("Hallow Keys")]
 [assembly: AssemblyProduct("Hallow Keys")]
 [assembly: AssemblyDescription("A personal password manager that keeps everything on your PC")]
-[assembly: AssemblyVersion("2.13.0.0")]
-[assembly: AssemblyFileVersion("2.13.0.0")]
+[assembly: AssemblyVersion("2.14.0.0")]
+[assembly: AssemblyFileVersion("2.14.0.0")]
 
 namespace HallowKeys
 {
     public static class Program
     {
-        public const string Version = "2.13";
+        public const string Version = "2.14";
         public static string AccentHex = Accent.Default;
         [STAThread]
         public static int Main(string[] args)
@@ -106,7 +106,7 @@ namespace HallowKeys
             ShowLock();
             // auto-lock: idle minutes (no mouse or keyboard on this PC), Windows lock, sleep
             var idle = new DispatcherTimer { Interval = TimeSpan.FromSeconds(10) };
-            idle.Tick += (s, e) => { if (vault != null && S.AutoLockMinutes > 0 && IdleSeconds() >= S.AutoLockMinutes * 60) Lock("Locked after " + S.AutoLockMinutes + " idle minutes."); };
+            idle.Tick += (s, e) => { if (vault != null && S.AutoLockMinutes > 0 && Math.Min(IdleSeconds(), (DateTime.UtcNow - unlockedAt).TotalSeconds) >= S.AutoLockMinutes * 60) Lock("Locked after " + S.AutoLockMinutes + " idle minutes."); };   // v2.14: idle counts from the unlock at the earliest (an unlock by Windows Hello or a test made no keyboard input)
             idle.Start();
             SystemEvents.SessionSwitch += (s, e) => { if (e.Reason == SessionSwitchReason.SessionLock) Dispatcher.BeginInvoke(new Action(() => Lock("Locked because Windows was locked."))); };
             SystemEvents.PowerModeChanged += (s, e) => { if (e.Mode == PowerModes.Suspend) Dispatcher.BeginInvoke(new Action(() => Lock("Locked because the PC went to sleep."))); };
@@ -280,8 +280,9 @@ namespace HallowKeys
         }
         void Unlocked(Vault v)
         {
-            vault = v; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17(); AfterUnlock20(); AfterUnlock21();
+            vault = v; unlockedAt = DateTime.UtcNow; WriteStatus(); ShowMain(); OnUnlocked(); AfterUnlock13(); AfterUnlock16(); AfterUnlock17(); AfterUnlock20(); AfterUnlock21();
         }
+        DateTime unlockedAt = DateTime.UtcNow;   // v2.14: when the vault was last unlocked (the idle auto-lock counts from here at the earliest)
         partial void OnUnlocked();
         partial void OnLocking();
         public void Lock(string why)
@@ -329,6 +330,8 @@ namespace HallowKeys
                 case "invoke": return OnUi(() => MenuInvoke(arg));
                 case "phone-change": return OnUi(() => PhoneChangeCmd(arg));
                 case "authtest-startover": return KeysSettings.TestDir == null ? "error unknown command" : OnUi(() => StartOverNow(arg));   // v2.11: developer tests only (test folder)
+                case "safetytest-state": case "safetytest-check4": case "safetytest-checkall": case "safetytest-kit": case "safetytest-kitrec": case "safetytest-newcode": case "safetytest-folder": case "safetytest-backup": case "safetytest-verify": case "safetytest-remind": case "safetytest-snooze": case "safetytest-day": case "safetytest-import": case "safetytest-trash":
+                    return KeysSettings.TestDir == null ? "error unknown command" : OnUi(() => SafetyTestCmd(cmd, arg));   // v2.14: developer tests only (test folder)
                 case "authtest-send": case "authtest-state": case "authtest-mirror-on": case "authtest-mirror": return OnUi(() => AuthTestCmd(cmd, arg));   // v2.11: developer tests only (test folder)   // v2.7: a sealed change from the phone, passed on by Hallow Remote
                 case "quit": new Thread(() => { Thread.Sleep(300); Dispatcher.BeginInvoke(new Action(Quit)); }) { IsBackground = true }.Start(); return "ok";
             }
@@ -357,7 +360,7 @@ namespace HallowKeys
             var t = Crash.LastTime();
             return Family.Json(new Dictionary<string, object> { { "app", "Keys" }, { "version", Program.Version }, { "updated", Family.Time(DateTime.Now) }, { "running", true },
                 { "locked", vault == null }, { "items", vault == null ? (object)null : Shown().Items.Count }, { "hallowIcon", hubHosts }, { "lastCrash", t == null ? null : Family.Time(t.Value) },
-                { "sync", SyncStatus() }, { "health", HealthStatus() } });   // v2.0: sync state only - never a path, key or item; v2.8: health = counts only
+                { "sync", SyncStatus() }, { "health", HealthStatus() }, { "safety", SafetyStatus() } });   // v2.0: sync state only - never a path, key or item; v2.8: health = counts only
         }
         public void WriteStatus() { if (!Snap.On) Family.WriteStatus(StatusJson()); }
 

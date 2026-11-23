@@ -50,7 +50,24 @@ namespace HallowKeys
         [DataMember] public bool CliOn = false;                      // v2.6: the command line (--get, --env, --run) may ask (off until you turn it on)
         [DataMember] public bool PhoneEdit = false;                  // v2.7: the phone may send changes back (separate from the read-only phone copy)
         [DataMember] public string Look = "follow";                  // v2.9: follow Hallow (theme.json) / light / dark
-        [OnDeserializing] void D(StreamingContext c) { Look = "follow"; AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; SyncOn = false; SyncFolder = ""; LastSync = ""; SshKeyIds = new System.Collections.Generic.List<string>(); ApproveMinutes = 10; }
+        // v2.14: "Don't lose access" - the safety checklist (markers only, never the code or a key) and automatic encrypted backups
+        [DataMember] public string SafetyRecovery = "";              // the recovery code's time (from the vault) when you confirmed it's saved ("" = not yet)
+        [DataMember] public string SafetyRecoveryHow = "";           // "check" (typed characters / the whole code) or "kit" (you marked the printed kit)
+        [DataMember] public string SafetyKit = "";                   // the recovery code's time + Secret Key id when you printed / marked the Emergency Kit
+        [DataMember] public string SafetySnoozeUntil = "";           // the card and the reminder are hidden until then (7 days at a time)
+        [DataMember] public string SafetyLastReminder = "";          // the day of the last reminder (at most one a day)
+        [DataMember] public string SafetyDoneAt = "";                // all three were done once: never reminded again
+        [DataMember] public bool AutoBackupOn = true;                // dated encrypted copies of the vault file (on by default)
+        [DataMember] public string AutoBackupFolder = "";            // "" = HallowKeys\backups on this PC (pick another drive or a NAS)
+        [DataMember] public bool AutoBackupPicked = false;           // you picked the folder yourself
+        [DataMember] public int AutoBackupKeep = 14;                 // keep the newest N (of this vault)
+        [DataMember] public string LastAutoBackup = "";              // when the last one was written
+        [DataMember] public string LastAutoBackupHash = "";          // the vault file's SHA-256 then (no new copy when nothing changed)
+        [DataMember] public string AutoBackupError = "";             // the last failure (shown; the checklist stays open)
+        [DataMember] public string LastBackupTest = "";              // the last restore test: when
+        [DataMember] public string LastBackupTestResult = "";        // and what it found
+        [DataMember] public ImportCompare LastImport;                // the last import (counts only) for "Leaving NordPass"
+        [OnDeserializing] void D(StreamingContext c) { SafetyRecovery = SafetyRecoveryHow = SafetyKit = SafetySnoozeUntil = SafetyLastReminder = SafetyDoneAt = ""; AutoBackupOn = true; AutoBackupFolder = ""; AutoBackupKeep = 14; LastAutoBackup = LastAutoBackupHash = AutoBackupError = LastBackupTest = LastBackupTestResult = "";Look = "follow"; AutoLockMinutes = 5; LockOnSleep = true; TrayOnClose = true; UseHallowIcon = true; UseHallowAccent = true; OldDays = 365; LastCrashShown = ""; LastUpdateCheck = ""; GenLength = 20; GenLower = GenUpper = GenDigits = GenSymbols = GenAvoid = true; GenWordCount = 5; LastLeakCheck = ""; QuickSearchKey = false; QuickSearchCombo = "Ctrl+Shift+Space"; DesktopFill = false; DesktopFillCombo = ""; ExpiryReminders = true; ExpiryDays = 30; WatchWeekly = false; LastWatchUpdate = ""; SyncOn = false; SyncFolder = ""; LastSync = ""; SshKeyIds = new System.Collections.Generic.List<string>(); ApproveMinutes = 10; }
         [OnDeserialized] void After26(StreamingContext c) { if (SshKeyIds == null) SshKeyIds = new System.Collections.Generic.List<string>(); }
 
         // HALLOW_KEYS_TESTDIR (developer tests only): everything lives in that folder instead, so tests never touch the real vault

@@ -9,6 +9,16 @@ HOW TO INSTALL
 3. Double-click INSTALL.bat (no admin needed)
 4. Pick a master password and print your Emergency Kit (or click "Open a synced vault" if you use Keys on another PC).
 
+WHAT'S NEW IN 2.14 - DON'T LOSE ACCESS
+- A safety checklist (sidebar > Don't lose access, and a card on the Vault page): recovery code saved (type 4 of
+  its characters, or mark your printed Emergency Kit), a backup or sync on, and the Emergency Kit printed.
+  A quiet reminder at most once a day until all three are done (never during a game), then never again.
+- Automatic encrypted backups, on by default: a dated copy of your vault when it changed, at most once a day.
+  Pick a folder on another drive, a USB drive or your NAS (not Documents: Windows' ransomware protection can
+  block it). "Test restore" checks the newest backup opens.
+- After a NordPass import: what was in the file and what is in Hallow Keys (by type, 2FA, no password).
+  Keep NordPass for about a month before you delete it.
+- Fixed: a vault unlocked without typing (Windows Hello) on a long-idle PC no longer locks again at once.
 WHAT'S NEW IN 2.13 - PASSKEYS IN HALLOW BROWSER
 - Hallow Browser 1.15 hands websites' passkey requests to Hallow Keys - no extension needed there. Its prompt
   (under the address bar) saves a passkey in your vault, signs in with one, or hands the request to Windows.
